@@ -1,7 +1,7 @@
 ---
 applyTo: '**'
-lastUpdated: '2026-03-24 13:00'
-chatSession: 'session-003'
+lastUpdated: '2026-03-24 15:00'
+chatSession: 'session-004'
 projectName: 'AdventChat WordPress Plugin'
 ---
 
@@ -13,28 +13,33 @@ projectName: 'AdventChat WordPress Plugin'
 
 ## 🎯 Current Focus
 
-**Active Phase:** Phase 1 — Plugin Foundation  
-**Active Issue:** WP-9 (EPIC), start with WP-10  
+**Active Phase:** Phase 2 — Firebase & Firestore  
+**Active Issue:** WP-20 (EPIC), start with WP-21  
 **Current Branch:** develop  
-**Last Activity:** Phase 0 COMPLETE — all repos, boards, labels, milestones, and 90 issues created.
+**Last Commit:** `6613f37` — merge Phase 1 to develop  
+**Last Activity:** Phase 1 COMPLETE — all 11 issues (#9-#19) implemented and closed. Milestone 2 closed.
 
 **Phase 0 Complete Checklist:**
-- ✅ Git repos initialized (adventchat + adventchat-mobile)
-- ✅ GitHub repos: maxymurm/adventchat (public), maxymurm/adventchat-mobile (private)
-- ✅ main + develop branches pushed to both repos
-- ✅ 35 labels created in both repos (phase-0 through phase-9, type, priority, tier)
-- ✅ 10 WP milestones (Phase 0-9) + 7 mobile milestones created
-- ✅ Project board #13 (WP) and #14 (Mobile) created
-- ✅ 90 WP issues filed (WP-1 through WP-90) + 50 mobile issues filed (MB-1 through MB-50)
-- ✅ All issues added to respective project boards
-- ✅ docs/planning/full-scope.md created for both repos
-- ✅ Planning docs committed
+- ✅ Git repos, labels, milestones, boards, 90 issues, planning docs
+
+**Phase 1 Complete Checklist:**
+- ✅ adventchat.php — main plugin file with WP header, constants, bootstrap
+- ✅ class-adventchat.php — singleton bootstrap, hooks, admin menu, REST init
+- ✅ class-adventchat-activator.php — dbDelta creates offline_messages + chat_logs tables
+- ✅ class-adventchat-deactivator.php + uninstall.php — cleanup and table drops
+- ✅ class-adventchat-settings.php — 6-tab settings framework (General, Firebase, Appearance, Chat, Offline, Privacy)
+- ✅ class-adventchat-options.php — get/set/delete with AES-256-CBC encryption for sensitive keys
+- ✅ class-adventchat-roles.php — adventchat_operator role + admin capability
+- ✅ class-adventchat-autoloader.php — file-exists based autoloading across includes/ subdirs
+- ✅ class-adventchat-api-controller.php — REST base with public/operator/admin permission callbacks
+- ✅ package.json + vite.config.ts + tsconfig.json + composer.json — esbuild widget + Vite console + Jest
+- ✅ Build passes: `npm run build` succeeds (widget 163B, console 143KB gzip 45KB)
 
 **Next Steps:**
-1. Switch to branch: `git checkout -b feature/wp-9-plugin-foundation develop`
-2. Start with WP-10: Create main adventchat.php plugin file
-3. Follow phase order: WP-10 → WP-11 → WP-12 → ... → WP-19
-4. Commit with: `git commit -m "feat(bootstrap): ...  Closes #10"`
+1. `git checkout -b feature/phase-2-firebase develop`
+2. Start with WP-21: Firestore schema documentation
+3. Follow: WP-21 → WP-22 → ... → WP-28
+4. Close EPIC #20 when all done, close milestone 3
 
 ---
 
