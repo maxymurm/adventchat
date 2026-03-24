@@ -254,6 +254,9 @@ final class AdventChat {
 			wp_enqueue_script( 'firebase-storage', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-storage-compat.js", array( 'firebase-app' ), $firebase_version, true );
 		}
 
+		// WP-88: Add crossorigin for Firebase CDN scripts.
+		add_filter( 'script_loader_tag', array( $this, 'add_crossorigin_attr' ), 10, 2 );
+
 		wp_enqueue_style(
 			'adventchat-widget',
 			ADVENTCHAT_PLUGIN_URL . 'assets/css/dist/widget.css',
@@ -381,6 +384,21 @@ final class AdventChat {
 				esc_html__( 'Set up Firebase →', 'adventchat' )
 			);
 		}
+	}
+
+	/**
+	 * WP-88: Add crossorigin attribute to Firebase CDN scripts.
+	 *
+	 * @param string $tag    Script HTML tag.
+	 * @param string $handle Script handle.
+	 * @return string
+	 */
+	public function add_crossorigin_attr( string $tag, string $handle ): string {
+		$firebase_handles = array( 'firebase-app', 'firebase-auth', 'firebase-firestore', 'firebase-storage' );
+		if ( in_array( $handle, $firebase_handles, true ) && false === strpos( $tag, 'crossorigin' ) ) {
+			$tag = str_replace( ' src=', ' crossorigin="anonymous" src=', $tag );
+		}
+		return $tag;
 	}
 
 	/**

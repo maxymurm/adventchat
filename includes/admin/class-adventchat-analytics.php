@@ -138,14 +138,16 @@ class AdventChat_Analytics {
 			)
 		);
 
-		// Average rating (non-zero).
+		// Average rating (non-zero) — no user input in query; table name from $wpdb->prefix.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$avg_rating = (float) $wpdb->get_var(
-			"SELECT AVG(rating) FROM {$table} WHERE rating > 0"
+			"SELECT AVG(rating) FROM `{$table}` WHERE rating > 0"
 		);
 
-		// Average response time (seconds between started_at and first agent message).
+		// Average response time — no user input; table name from $wpdb->prefix.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$avg_duration = (int) $wpdb->get_var(
-			"SELECT AVG(duration_seconds) FROM {$table} WHERE duration_seconds > 0"
+			"SELECT AVG(duration_seconds) FROM `{$table}` WHERE duration_seconds > 0"
 		);
 
 		// Format response time.
