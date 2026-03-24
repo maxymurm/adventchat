@@ -75,6 +75,10 @@ final class AdventChat {
 	 */
 	public function init_components(): void {
 		AdventChat_Roles::init();
+
+		if ( is_admin() ) {
+			AdventChat_Admin::init();
+		}
 	}
 
 	/**
@@ -154,6 +158,11 @@ final class AdventChat {
 			array(),
 			ADVENTCHAT_VERSION
 		);
+
+		wp_localize_script( 'jquery', 'adventchatAdmin', array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'adventchat_admin_nonce' ),
+		) );
 	}
 
 	/**

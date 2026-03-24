@@ -142,6 +142,32 @@ class AdventChat_Settings {
 			esc_textarea( $value )
 		);
 		echo '<p class="description">' . esc_html__( 'Paste the full Firebase config object: { apiKey, authDomain, projectId, ... }', 'adventchat' ) . '</p>';
+		echo '<p style="margin-top:10px;"><button type="button" class="button" id="adventchat-test-firebase">' . esc_html__( 'Test Connection', 'adventchat' ) . '</button> <span id="adventchat-firebase-test-result"></span></p>';
+		echo '<script>
+			document.getElementById("adventchat-test-firebase").addEventListener("click", function() {
+				var btn = this;
+				var result = document.getElementById("adventchat-firebase-test-result");
+				btn.disabled = true;
+				result.textContent = "Testing…";
+				result.style.color = "";
+				fetch(adventchatAdmin.ajaxUrl, {
+					method: "POST",
+					headers: { "Content-Type": "application/x-www-form-urlencoded" },
+					body: "action=adventchat_test_firebase&nonce=" + adventchatAdmin.nonce
+				})
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					result.textContent = data.data.message;
+					result.style.color = data.success ? "green" : "red";
+					btn.disabled = false;
+				})
+				.catch(function() {
+					result.textContent = "Request failed.";
+					result.style.color = "red";
+					btn.disabled = false;
+				});
+			});
+		</script>';
 	}
 
 	/**
