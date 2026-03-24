@@ -3,7 +3,9 @@
  *
  * Implements: WP-30 (shell), WP-31 (injection), WP-32 (session),
  * WP-33 (send), WP-34 (receive), WP-35 (typing), WP-36 (read receipts),
- * WP-37 (visitor info), WP-38 (sound).
+ * WP-37 (visitor info), WP-38 (sound), WP-54 (pre-chat form),
+ * WP-55 (offline form), WP-57 (transcript email), WP-58 (CSAT),
+ * WP-60 (file sharing), WP-61 (GDPR consent).
  *
  * @package AdventChat
  */
@@ -44,6 +46,7 @@
   var ICON_CHAT = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>';
   var ICON_CLOSE = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
   var ICON_SEND = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+  var ICON_ATTACH = '<svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>';
 
   /* ------------------------------------------------------------------ */
   /*  WP-37: Visitor info collector                                      */
@@ -85,6 +88,184 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /*  WP-55: Offline form builder                                        */
+  /* ------------------------------------------------------------------ */
+  function buildOfflineForm() {
+    if (settings.offlineEnabled !== '1') return '';
+    var html =
+      '<div class="ac-offline" id="ac-offline" style="display:none;">' +
+        '<p class="ac-offline__text">We are currently offline. Leave a message and we\'ll get back to you.</p>' +
+        '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-name">Name</label><input class="ac-prechat__input" id="ac-off-name" type="text" required /></div>' +
+        '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-email">Email</label><input class="ac-prechat__input" id="ac-off-email" type="email" required /></div>' +
+        '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-msg">Message</label><textarea class="ac-prechat__input" id="ac-off-msg" rows="3" required></textarea></div>';
+
+    if (settings.gdprEnabled === '1') {
+      html += '<label class="ac-prechat__consent"><input type="checkbox" id="ac-off-consent" /><span>I agree to the processing of my personal data.</span></label>';
+    }
+
+    html += '<button class="ac-prechat__btn" id="ac-off-submit" type="button">Send Message</button>' +
+      '<p class="ac-offline__success" id="ac-off-success" style="display:none;color:#22c55e;text-align:center;font-size:13px;">Message sent! We\'ll be in touch soon.</p>' +
+      '</div>';
+    return html;
+  }
+
+  function submitOfflineMessage() {
+    var name = document.getElementById('ac-off-name');
+    var email = document.getElementById('ac-off-email');
+    var msg = document.getElementById('ac-off-msg');
+    var consent = document.getElementById('ac-off-consent');
+
+    if (!name || !name.value.trim()) { if (name) name.focus(); return; }
+    if (!email || !email.value.trim()) { email.focus(); return; }
+    if (!msg || !msg.value.trim()) { msg.focus(); return; }
+    if (consent && !consent.checked) return;
+
+    var submitBtn = document.getElementById('ac-off-submit');
+    if (submitBtn) submitBtn.disabled = true;
+
+    fetch(config.restUrl + '/offline-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': config.restNonce },
+      body: JSON.stringify({ name: name.value.trim(), email: email.value.trim(), message: msg.value.trim(), consent: consent ? consent.checked : false }),
+    }).then(function () {
+      var success = document.getElementById('ac-off-success');
+      if (success) success.style.display = 'block';
+      if (submitBtn) submitBtn.style.display = 'none';
+      name.value = ''; email.value = ''; msg.value = '';
+    }).catch(function () {
+      if (submitBtn) submitBtn.disabled = false;
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  WP-58: CSAT rating                                                 */
+  /* ------------------------------------------------------------------ */
+  function buildCsatHtml() {
+    return '<div class="ac-csat" id="ac-csat" style="display:none;">' +
+      '<p class="ac-csat__title">How was your chat?</p>' +
+      '<div class="ac-csat__stars">' +
+        '<button class="ac-csat__star" data-rating="1" type="button">★</button>' +
+        '<button class="ac-csat__star" data-rating="2" type="button">★</button>' +
+        '<button class="ac-csat__star" data-rating="3" type="button">★</button>' +
+        '<button class="ac-csat__star" data-rating="4" type="button">★</button>' +
+        '<button class="ac-csat__star" data-rating="5" type="button">★</button>' +
+      '</div>' +
+      '<textarea class="ac-prechat__input" id="ac-csat-comment" rows="2" placeholder="Any feedback? (optional)"></textarea>' +
+      '<button class="ac-prechat__btn" id="ac-csat-submit" type="button">Submit</button>' +
+      '</div>';
+  }
+
+  function showCsat() {
+    if (settings.csatEnabled !== '1') return;
+    var csat = document.getElementById('ac-csat');
+    var input = document.getElementById('ac-input');
+    if (csat) csat.style.display = 'flex';
+    if (input) input.style.display = 'none';
+
+    var stars = document.querySelectorAll('.ac-csat__star');
+    var selectedRating = 0;
+    stars.forEach(function (s) {
+      s.addEventListener('click', function () {
+        selectedRating = parseInt(s.getAttribute('data-rating'));
+        stars.forEach(function (ss) {
+          ss.classList.toggle('ac-csat__star--active', parseInt(ss.getAttribute('data-rating')) <= selectedRating);
+        });
+      });
+    });
+
+    var submitBtn = document.getElementById('ac-csat-submit');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function () {
+        if (!selectedRating || !state.sessionId) return;
+        var comment = document.getElementById('ac-csat-comment');
+        db.collection('sessions').doc(state.sessionId).update({
+          rating: selectedRating,
+          ratingComment: comment ? comment.value.trim() : '',
+        }).then(function () {
+          csat.innerHTML = '<p class="ac-csat__title">Thank you for your feedback!</p>';
+        });
+      });
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  WP-57: Transcript email                                            */
+  /* ------------------------------------------------------------------ */
+  function sendTranscript() {
+    if (!state.sessionId || !state.visitorEmail) return;
+    var msgs = [];
+    var container = document.getElementById('ac-messages');
+    if (container) {
+      container.querySelectorAll('.ac-message').forEach(function (el) {
+        msgs.push({
+          senderName: el.classList.contains('ac-message--visitor') ? state.visitorName : 'Agent',
+          senderType: el.classList.contains('ac-message--visitor') ? 'visitor' : (el.classList.contains('ac-message--system') ? 'system' : 'agent'),
+          text: el.textContent || '',
+          timestamp: '',
+        });
+      });
+    }
+
+    fetch(config.restUrl + '/transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': config.restNonce },
+      body: JSON.stringify({ email: state.visitorEmail, name: state.visitorName, messages: msgs }),
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  WP-60: File/image sharing (Firebase Storage)                       */
+  /* ------------------------------------------------------------------ */
+  var FILE_MAX = 10 * 1024 * 1024; // 10MB
+
+  function handleFileUpload(file) {
+    if (!file || !state.sessionId || !state.user) return;
+    if (file.size > FILE_MAX) {
+      addSystemMessage('File too large. Maximum size is 10MB.');
+      return;
+    }
+
+    // Use Firebase Storage if available.
+    if (typeof firebase.storage !== 'function') {
+      addSystemMessage('File sharing is not available.');
+      return;
+    }
+
+    var storage = firebase.storage();
+    var path = 'chats/' + state.sessionId + '/' + Date.now() + '_' + file.name;
+    var ref = storage.ref(path);
+
+    addSystemMessage('Uploading ' + file.name + '...');
+
+    ref.put(file).then(function (snap) {
+      return snap.ref.getDownloadURL();
+    }).then(function (url) {
+      var isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+      var text = isImage
+        ? '![' + escHtml(file.name) + '](' + url + ')'
+        : '[📎 ' + escHtml(file.name) + '](' + url + ')';
+
+      var messageData = {
+        senderUid: state.user.uid,
+        senderName: state.visitorName || 'Visitor',
+        senderType: 'visitor',
+        text: text,
+        fileUrl: url,
+        fileName: file.name,
+        fileType: isImage ? 'image' : 'file',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        readByAgent: false,
+        readByVisitor: true,
+      };
+
+      db.collection('sessions').doc(state.sessionId)
+        .collection('messages').add(messageData);
+    }).catch(function (err) {
+      addSystemMessage('Upload failed: ' + err.message);
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
   /*  WP-30/31: Build and inject widget DOM                              */
   /* ------------------------------------------------------------------ */
   function buildWidget() {
@@ -105,8 +286,14 @@
         '<div class="ac-messages" id="ac-messages" style="display:none;"></div>' +
         '<div class="ac-typing" id="ac-typing"><span></span><span class="ac-typing__dots"><span></span><span></span><span></span></span></div>' +
         '<div class="ac-input" id="ac-input" style="display:none;">' +
+          (settings.fileSharing === '1' ? '<button class="ac-input__attach" id="ac-attach" type="button" title="Attach file">' + ICON_ATTACH + '</button><input type="file" id="ac-file-input" style="display:none;" />' : '') +
           '<textarea class="ac-input__text" id="ac-text" rows="1" placeholder="' + escAttr(settings.placeholder || 'Type a message\u2026') + '"></textarea>' +
           '<button class="ac-input__send" id="ac-send" type="button">' + ICON_SEND + '</button>' +
+        '</div>' +
+        buildOfflineForm() +
+        buildCsatHtml() +
+        '<div class="ac-footer-actions" id="ac-footer-actions" style="display:none;">' +
+          '<button class="ac-footer-btn" id="ac-transcript-btn" type="button">Email transcript</button>' +
         '</div>' +
         '<div class="ac-powered">Powered by <a href="https://adventchat.com" target="_blank" rel="noopener">AdventChat</a></div>' +
       '</div>' +
@@ -203,6 +390,35 @@
         startChat();
       });
     }
+
+    // WP-55: Offline form submit.
+    var offSubmit = root.querySelector('#ac-off-submit');
+    if (offSubmit) {
+      offSubmit.addEventListener('click', submitOfflineMessage);
+    }
+
+    // WP-60: File attach.
+    var attachBtn = root.querySelector('#ac-attach');
+    var fileInput = root.querySelector('#ac-file-input');
+    if (attachBtn && fileInput) {
+      attachBtn.addEventListener('click', function () { fileInput.click(); });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          handleFileUpload(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    // WP-57: Transcript email button.
+    var transcriptBtn = root.querySelector('#ac-transcript-btn');
+    if (transcriptBtn) {
+      transcriptBtn.addEventListener('click', function () {
+        sendTranscript();
+        transcriptBtn.textContent = 'Transcript sent!';
+        transcriptBtn.disabled = true;
+      });
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -243,6 +459,7 @@
 
       listenForMessages();
       listenForAgentTyping();
+      listenForSessionStatus();
     }).catch(function (err) {
       console.error('[AdventChat] Session creation failed:', err.message);
       addSystemMessage('Unable to start chat. Please try again.');
@@ -361,6 +578,24 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /*  WP-58: Listen for session status changes (for CSAT + transcript)   */
+  /* ------------------------------------------------------------------ */
+  function listenForSessionStatus() {
+    if (!state.sessionId) return;
+    db.collection('sessions').doc(state.sessionId)
+      .onSnapshot(function (doc) {
+        var data = doc.data();
+        if (data && data.status === 'ended') {
+          addSystemMessage('Chat ended.');
+          var footer = document.getElementById('ac-footer-actions');
+          if (footer && state.visitorEmail) footer.style.display = 'flex';
+          showCsat();
+          sessionStorage.removeItem('adventchat_session');
+        }
+      });
+  }
+
+  /* ------------------------------------------------------------------ */
   /*  DOM helpers                                                        */
   /* ------------------------------------------------------------------ */
   function renderMessage(msg, id) {
@@ -377,7 +612,17 @@
     } else {
       var isVisitor = msg.senderType === 'visitor';
       el.className = 'ac-message ' + (isVisitor ? 'ac-message--visitor' : 'ac-message--agent');
-      el.innerHTML = '<span>' + escHtml(msg.text) + '</span>';
+
+      // WP-60: Render file/image attachments.
+      if (msg.fileUrl) {
+        if (msg.fileType === 'image') {
+          el.innerHTML = '<img class="ac-message__img" src="' + escAttr(msg.fileUrl) + '" alt="' + escAttr(msg.fileName || 'Image') + '" />';
+        } else {
+          el.innerHTML = '<a class="ac-message__file" href="' + escAttr(msg.fileUrl) + '" target="_blank" rel="noopener">📎 ' + escHtml(msg.fileName || 'File') + '</a>';
+        }
+      } else {
+        el.innerHTML = '<span>' + escHtml(msg.text) + '</span>';
+      }
 
       if (msg.timestamp) {
         var time = document.createElement('span');
@@ -440,6 +685,7 @@
         if (prechatEl) prechatEl.style.display = 'none';
         listenForMessages();
         listenForAgentTyping();
+        listenForSessionStatus();
       }
     } else {
       auth.signInAnonymously().catch(function (err) {
