@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wpml-config>
+	<admin-texts>
+		<key name="adventchat_welcome_title">
+			<key name="0" />
+		</key>
+		<key name="adventchat_welcome_subtitle">
+			<key name="0" />
+		</key>
+		<key name="adventchat_input_placeholder">
+			<key name="0" />
+		</key>
+	</admin-texts>
+</wpml-config>

@@ -9,7 +9,11 @@ _references/
 *.swp
 node_modules/
 
-# Build artifacts
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts (tracked in dist/)
 /assets/js/*.min.js
 /assets/css/*.min.css
 

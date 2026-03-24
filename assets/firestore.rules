@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================================================================
+    // Helper functions
+    // ================================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAgent() {
+      return isAuthenticated()
+        && request.auth.token.email != null
+        && request.auth.token.email_verified == true;
+    }
+
+    function isAnonymous() {
+      return isAuthenticated()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function validSiteId(siteId) {
+      return siteId is string && siteId.size() == 32;
+    }
+
+    // ================================================================
+    // Sessions collection
+    // ================================================================
+    match /sessions/{sessionId} {
+      // Visitors can create their own session.
+      allow create: if isAuthenticated()
+        && request.resource.data.visitorUid == request.auth.uid
+        && validSiteId(request.resource.data.siteId);
+
+      // Visitors can read/update their own session.
+      allow read, update: if isAuthenticated()
+        && (resource.data.visitorUid == request.auth.uid || isAgent());
+
+      // Only agents can delete sessions.
+      allow delete: if isAgent();
+
+      // ================================================================
+      // Messages subcollection
+      // ================================================================
+      match /messages/{messageId} {
+        // Anyone in the session can read messages.
+        allow read: if isAuthenticated();
+
+        // Visitors can create messages in their own session.
+        allow create: if isAuthenticated()
+          && request.resource.data.senderUid == request.auth.uid;
+
+        // No one can update or delete messages.
+        allow update, delete: if false;
+      }
+
+      // ================================================================
+      // Typing subcollection
+      // ================================================================
+      match /typing/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+    }
+
+    // ================================================================
+    // Agents collection
+    // ================================================================
+    match /agents/{agentId} {
+      // Agents can read all agents (for presence awareness).
+      allow read: if isAuthenticated();
+
+      // Agents can update their own document (status, lastSeen).
+      allow update: if isOwner(agentId) && isAgent();
+
+      // Only server (admin SDK) creates/deletes agents — deny client writes.
+      allow create, delete: if false;
+    }
+
+    // ================================================================
+    // Departments collection
+    // ================================================================
+    match /departments/{departmentId} {
+      // Anyone can read departments (visitors need them for routing).
+      allow read: if isAuthenticated();
+
+      // Only admin SDK writes departments.
+      allow write: if false;
+    }
+
+    // ================================================================
+    // Macros collection
+    // ================================================================
+    match /macros/{macroId} {
+      // Only agents can read/write macros.
+      allow read, write: if isAgent();
+    }
+
+    // ================================================================
+    // Offline messages collection
+    // ================================================================
+    match /offlineMessages/{messageId} {
+      // Visitors can create offline messages.
+      allow create: if isAuthenticated()
+        && validSiteId(request.resource.data.siteId);
+
+      // Only agents can read offline messages.
+      allow read: if isAgent();
+
+      // Only agents can update status.
+      allow update: if isAgent();
+
+      // No one deletes offline messages from client.
+      allow delete: if false;
+    }
+
+    // ================================================================
+    // Deny everything else
+    // ================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
