@@ -1,0 +1,227 @@
+# Copyright (C) 2024 AdventChat
+# This file is distributed under the GPL v3.
+msgid ""
+msgstr ""
+"Project-Id-Version: AdventChat 1.0.0\n"
+"Report-Msgid-Bugs-To: https://adventchat.com\n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: AdventChat\n"
+"X-Domain: adventchat\n"
+
+#: includes/admin/class-adventchat-settings.php
+msgid "General"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Firebase"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Appearance"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Display Rules"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Chat"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Offline"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Privacy"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Hi there! 👋"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "How can we help you?"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Type a message…"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Welcome Title"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Welcome Subtitle"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Input Placeholder"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Primary Color"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Secondary Color"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Widget Position"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Bottom Right"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Bottom Left"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Launcher Style"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Bubble"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Tab"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Custom Image"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Custom CSS"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Sound Notifications"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Auto-open Widget"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Chat Routing"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Round Robin"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Manual (agents accept)"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Notify All"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Email Transcript"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Chat Rating (CSAT)"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "File Sharing"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Enable Offline Form"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Notification Email"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "GDPR Consent"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Pre-chat Form"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Privacy Policy Page"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Show on all pages"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Show only on specific pages"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Hide on specific pages"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Hide on Mobile"
+msgstr ""
+
+#: includes/admin/class-adventchat-settings.php
+msgid "Guest Only"
+msgstr ""
+
+#: includes/class-adventchat.php
+msgid "AdventChat"
+msgstr ""
+
+#: includes/class-adventchat.php
+msgid "Live Chat"
+msgstr ""
+
+#: includes/class-adventchat.php
+msgid "Settings"
+msgstr ""
+
+#: includes/class-adventchat.php
+msgid "AdventChat requires Firebase configuration."
+msgstr ""
+
+#: includes/class-adventchat.php
+msgid "Set up Firebase →"
+msgstr ""
+
+#: includes/integrations/class-adventchat-elementor.php
+msgid "AdventChat Launcher"
+msgstr ""
+
+#: includes/integrations/class-adventchat-elementor.php
+msgid "Chat with us"
+msgstr ""
+
+#: includes/integrations/class-adventchat-elementor.php
+msgid "Button Text"
+msgstr ""
+
+#: includes/integrations/class-adventchat-elementor.php
+msgid "Button Color"
+msgstr ""
+
+#: includes/class-adventchat-identity.php
+msgid "Identity Verification"
+msgstr ""
+
+#: includes/class-adventchat-identity.php
+msgid "Verify logged-in user identity via HMAC hash."
+msgstr ""

@@ -18,6 +18,8 @@
   var config = window.adventchatConfig;
   var settings = config.settings || {};
   var siteId = config.siteId;
+  var identity = config.identity || null;
+  var woo = config.woo || null;
 
   /* ------------------------------------------------------------------ */
   /*  Firebase init                                                      */
@@ -349,15 +351,20 @@
 
   function buildPrechatForm() {
     if (settings.prechatEnabled !== '1') return '';
+
+    // WP-72/77: Pre-fill values from WooCommerce or identity verification.
+    var prefillName = settings.prefillName || (identity ? identity.name : '') || '';
+    var prefillEmail = settings.prefillEmail || (identity ? identity.email : '') || '';
+
     var html =
       '<div class="ac-prechat" id="ac-prechat">' +
         '<div class="ac-prechat__field">' +
           '<label class="ac-prechat__label" for="ac-name">Name</label>' +
-          '<input class="ac-prechat__input" id="ac-name" type="text" required />' +
+          '<input class="ac-prechat__input" id="ac-name" type="text" value="' + escAttr(prefillName) + '" required />' +
         '</div>' +
         '<div class="ac-prechat__field">' +
           '<label class="ac-prechat__label" for="ac-email">Email</label>' +
-          '<input class="ac-prechat__input" id="ac-email" type="email" required />' +
+          '<input class="ac-prechat__input" id="ac-email" type="email" value="' + escAttr(prefillEmail) + '" required />' +
         '</div>';
 
     if (settings.gdprEnabled === '1') {
@@ -493,6 +500,18 @@
       rating: 0,
       ratingComment: '',
     };
+
+    // WP-77: Attach identity verification hash.
+    if (identity && identity.hash) {
+      sessionData.identityHash = identity.hash;
+      sessionData.identityVerified = true;
+      sessionData.wpUserId = identity.userId;
+    }
+
+    // WP-70/71/72: Attach WooCommerce context.
+    if (woo) {
+      sessionData.wooCommerce = woo;
+    }
 
     db.collection('sessions').add(sessionData).then(function (docRef) {
       state.sessionId = docRef.id;
