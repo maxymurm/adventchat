@@ -77,6 +77,15 @@ final class AdventChat {
 	public function init_components(): void {
 		AdventChat_Roles::init();
 
+		// WP-70/71/72: WooCommerce integration.
+		AdventChat_WooCommerce::init();
+		// WP-73: WPML + Polylang i18n.
+		AdventChat_I18n::init();
+		// WP-75: Elementor widget.
+		AdventChat_Elementor::init();
+		// WP-77: Identity verification.
+		AdventChat_Identity::init();
+
 		if ( is_admin() ) {
 			AdventChat_Admin::init();
 			AdventChat_Departments::init();
@@ -263,7 +272,7 @@ final class AdventChat {
 		);
 
 		$config = json_decode( $firebase_config, true );
-		wp_localize_script( 'adventchat-widget', 'adventchatConfig', array(
+		$widget_config = array(
 			'firebase'    => $config,
 			'siteId'      => md5( get_site_url() ),
 			'restUrl'     => esc_url_raw( rest_url( ADVENTCHAT_API_NAMESPACE ) ),
@@ -288,7 +297,18 @@ final class AdventChat {
 				'csatEnabled'     => get_option( 'adventchat_csat_enabled', '1' ),
 				'fileSharing'     => get_option( 'adventchat_file_sharing', '1' ),
 			),
-		) );
+		);
+
+		/**
+		 * Filter widget config before localization.
+		 *
+		 * Used by WooCommerce, WPML/Polylang, and Identity integrations.
+		 *
+		 * @param array $widget_config Widget configuration array.
+		 */
+		$widget_config = apply_filters( 'adventchat_widget_config', $widget_config );
+
+		wp_localize_script( 'adventchat-widget', 'adventchatConfig', $widget_config );
 	}
 
 	/**
@@ -327,6 +347,9 @@ final class AdventChat {
 
 		$visitor = new AdventChat_Api_Visitor();
 		$visitor->register_routes();
+
+		$widget_config = new AdventChat_Api_Widget_Config();
+		$widget_config->register_routes();
 	}
 
 	/**
