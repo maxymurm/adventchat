@@ -1,0 +1,25 @@
+/**
+ * AdventChat Widget — base styles.
+ */
+
+.adventchat-widget {
+  --ac-primary: #0066ff;
+  --ac-secondary: #ffffff;
+  --ac-text: #1a1a1a;
+  --ac-text-light: #6b7280;
+  --ac-border: #e5e7eb;
+  --ac-radius: 12px;
+  --ac-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  --ac-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  font-family: var(--ac-font);
+  font-size: 14px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.adventchat-widget *,
+.adventchat-widget *::before,
+.adventchat-widget *::after {
+  box-sizing: border-box;
+}
