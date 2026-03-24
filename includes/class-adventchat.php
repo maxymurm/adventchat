@@ -77,6 +77,13 @@ final class AdventChat {
 	public function init_components(): void {
 		AdventChat_Roles::init();
 
+		// WP-79/80: License and premium gating.
+		AdventChat_License::init();
+		// WP-81: Hosted Firebase provisioning.
+		AdventChat_Provisioning::init();
+		// WP-83: FCM push dispatch.
+		AdventChat_Push::init();
+
 		// WP-70/71/72: WooCommerce integration.
 		AdventChat_WooCommerce::init();
 		// WP-73: WPML + Polylang i18n.
@@ -92,6 +99,10 @@ final class AdventChat {
 			AdventChat_Macros::init();
 			AdventChat_Offline_List::init();
 			AdventChat_Logs_List::init();
+			// WP-82: Account connection UI.
+			AdventChat_Account::init();
+			// WP-84: Analytics dashboard.
+			AdventChat_Analytics::init();
 		}
 	}
 
