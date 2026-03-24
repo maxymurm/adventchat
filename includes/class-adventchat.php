@@ -80,6 +80,8 @@ final class AdventChat {
 			AdventChat_Admin::init();
 			AdventChat_Departments::init();
 			AdventChat_Macros::init();
+			AdventChat_Offline_List::init();
+			AdventChat_Logs_List::init();
 		}
 	}
 
@@ -221,6 +223,11 @@ final class AdventChat {
 		wp_enqueue_script( 'firebase-auth', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-auth-compat.js", array( 'firebase-app' ), $firebase_version, true );
 		wp_enqueue_script( 'firebase-firestore', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-firestore-compat.js", array( 'firebase-app' ), $firebase_version, true );
 
+		// WP-60: Firebase Storage for file sharing.
+		if ( '1' === get_option( 'adventchat_file_sharing', '1' ) ) {
+			wp_enqueue_script( 'firebase-storage', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-storage-compat.js", array( 'firebase-app' ), $firebase_version, true );
+		}
+
 		wp_enqueue_style(
 			'adventchat-widget',
 			ADVENTCHAT_PLUGIN_URL . 'assets/css/dist/widget.css',
@@ -268,6 +275,9 @@ final class AdventChat {
 
 		$operators = new AdventChat_Api_Operators();
 		$operators->register_routes();
+
+		$visitor = new AdventChat_Api_Visitor();
+		$visitor->register_routes();
 	}
 
 	/**
