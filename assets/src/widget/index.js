@@ -275,6 +275,28 @@
     root.style.setProperty('--ac-primary', settings.primaryColor || '#0066ff');
     root.style.setProperty('--ac-secondary', settings.secondaryColor || '#ffffff');
 
+    // WP-64: Custom X/Y offsets.
+    var offsetX = (settings.offsetX || 20) + 'px';
+    var offsetY = (settings.offsetY || 20) + 'px';
+    root.style.bottom = offsetY;
+    if (pos === 'bottom-right') { root.style.right = offsetX; } else { root.style.left = offsetX; }
+
+    // WP-64: Launcher style.
+    var launcherStyle = settings.launcherStyle || 'bubble';
+    var launcherClass = 'ac-launcher';
+    if (launcherStyle === 'tab') launcherClass += ' ac-launcher--tab';
+    if (launcherStyle === 'custom-image') launcherClass += ' ac-launcher--custom';
+
+    var launcherContent = '';
+    if (launcherStyle === 'custom-image' && settings.launcherImage) {
+      launcherContent =
+        '<img class="ac-launcher__img" src="' + escAttr(settings.launcherImage) + '" alt="Chat" />';
+    } else {
+      launcherContent =
+        '<span class="ac-icon-chat">' + ICON_CHAT + '</span>' +
+        '<span class="ac-icon-close">' + ICON_CLOSE + '</span>';
+    }
+
     root.innerHTML =
       '<div class="ac-window" id="ac-window">' +
         '<div class="ac-header">' +
@@ -297,14 +319,32 @@
         '</div>' +
         '<div class="ac-powered">Powered by <a href="https://adventchat.com" target="_blank" rel="noopener">AdventChat</a></div>' +
       '</div>' +
-      '<button class="ac-launcher" id="ac-launcher" type="button" aria-label="Toggle chat">' +
-        '<span class="ac-icon-chat">' + ICON_CHAT + '</span>' +
-        '<span class="ac-icon-close">' + ICON_CLOSE + '</span>' +
+      '<button class="' + launcherClass + '" id="ac-launcher" type="button" aria-label="Toggle chat">' +
+        launcherContent +
         '<span class="ac-badge" id="ac-badge">0</span>' +
       '</button>';
 
+    if (launcherStyle === 'tab') {
+      var launcherEl = root.querySelector('#ac-launcher');
+      if (launcherEl) launcherEl.innerHTML += '<span class="ac-launcher__label">Chat</span>';
+    }
+
     document.body.appendChild(root);
     bindEvents(root);
+
+    // WP-66: Auto-open with delay.
+    if (settings.autoOpenEnabled === '1' && !sessionStorage.getItem('ac_closed')) {
+      var delayMs = (parseInt(settings.autoOpenDelay, 10) || 5) * 1000;
+      setTimeout(function () {
+        if (!state.open) {
+          var chatWindow = root.querySelector('#ac-window');
+          var launcher = root.querySelector('#ac-launcher');
+          state.open = true;
+          if (chatWindow) chatWindow.classList.add('ac-window--open');
+          if (launcher) launcher.classList.add('ac-launcher--open');
+        }
+      }, delayMs);
+    }
   }
 
   function buildPrechatForm() {
@@ -350,6 +390,9 @@
         state.unreadCount = 0;
         updateBadge();
         if (!startBtn && !state.sessionId) startChat();
+      } else {
+        // WP-66: Mark as manually closed so auto-open doesn't fire again.
+        sessionStorage.setItem('ac_closed', '1');
       }
     });
 

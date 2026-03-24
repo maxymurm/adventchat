@@ -60,6 +60,7 @@ final class AdventChat {
 		}
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'frontend_assets' ) );
+		add_action( 'wp_footer', array( $this, 'output_custom_css' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 	}
 
@@ -217,6 +218,11 @@ final class AdventChat {
 			return;
 		}
 
+		// WP-65: Display rules — skip enqueue if widget should not show.
+		if ( ! AdventChat_Display_Rules::should_display() ) {
+			return;
+		}
+
 		// Firebase SDK (compat builds for simple global access).
 		$firebase_version = '10.14.1';
 		wp_enqueue_script( 'firebase-app', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-app-compat.js", array(), $firebase_version, true );
@@ -243,6 +249,19 @@ final class AdventChat {
 			true
 		);
 
+		// WP-67: Welcome message variable substitution.
+		$site_name     = get_bloginfo( 'name' );
+		$welcome_title = str_replace(
+			array( '{site_name}' ),
+			array( $site_name ),
+			get_option( 'adventchat_welcome_title', __( 'Hi there! 👋', 'adventchat' ) )
+		);
+		$welcome_subtitle = str_replace(
+			array( '{site_name}' ),
+			array( $site_name ),
+			get_option( 'adventchat_welcome_subtitle', __( 'How can we help you?', 'adventchat' ) )
+		);
+
 		$config = json_decode( $firebase_config, true );
 		wp_localize_script( 'adventchat-widget', 'adventchatConfig', array(
 			'firebase'    => $config,
@@ -250,20 +269,50 @@ final class AdventChat {
 			'restUrl'     => esc_url_raw( rest_url( ADVENTCHAT_API_NAMESPACE ) ),
 			'restNonce'   => wp_create_nonce( 'wp_rest' ),
 			'settings'    => array(
-				'position'       => get_option( 'adventchat_position', 'bottom-right' ),
-				'primaryColor'   => get_option( 'adventchat_primary_color', '#0066ff' ),
-				'secondaryColor' => get_option( 'adventchat_secondary_color', '#ffffff' ),
-				'welcomeTitle'   => get_option( 'adventchat_welcome_title', __( 'Hi there! 👋', 'adventchat' ) ),
-				'welcomeSubtitle'=> get_option( 'adventchat_welcome_subtitle', __( 'How can we help you?', 'adventchat' ) ),
-				'placeholder'    => get_option( 'adventchat_input_placeholder', __( 'Type a message…', 'adventchat' ) ),
-				'soundEnabled'   => get_option( 'adventchat_sound_enabled', '1' ),
-				'offlineEnabled' => get_option( 'adventchat_offline_enabled', '1' ),
-				'gdprEnabled'    => get_option( 'adventchat_gdpr_enabled', '0' ),
-				'prechatEnabled' => get_option( 'adventchat_prechat_enabled', '1' ),
-				'csatEnabled'    => get_option( 'adventchat_csat_enabled', '1' ),
-				'fileSharing'    => get_option( 'adventchat_file_sharing', '1' ),
+				'position'        => get_option( 'adventchat_position', 'bottom-right' ),
+				'offsetX'         => absint( get_option( 'adventchat_offset_x', 20 ) ),
+				'offsetY'         => absint( get_option( 'adventchat_offset_y', 20 ) ),
+				'primaryColor'    => get_option( 'adventchat_primary_color', '#0066ff' ),
+				'secondaryColor'  => get_option( 'adventchat_secondary_color', '#ffffff' ),
+				'launcherStyle'   => get_option( 'adventchat_launcher_style', 'bubble' ),
+				'launcherImage'   => esc_url( get_option( 'adventchat_launcher_image', '' ) ),
+				'welcomeTitle'    => $welcome_title,
+				'welcomeSubtitle' => $welcome_subtitle,
+				'placeholder'     => get_option( 'adventchat_input_placeholder', __( 'Type a message…', 'adventchat' ) ),
+				'soundEnabled'    => get_option( 'adventchat_sound_enabled', '1' ),
+				'autoOpenEnabled' => get_option( 'adventchat_auto_open_enabled', '0' ),
+				'autoOpenDelay'   => absint( get_option( 'adventchat_auto_open_delay', 5 ) ),
+				'offlineEnabled'  => get_option( 'adventchat_offline_enabled', '1' ),
+				'gdprEnabled'     => get_option( 'adventchat_gdpr_enabled', '0' ),
+				'prechatEnabled'  => get_option( 'adventchat_prechat_enabled', '1' ),
+				'csatEnabled'     => get_option( 'adventchat_csat_enabled', '1' ),
+				'fileSharing'     => get_option( 'adventchat_file_sharing', '1' ),
 			),
 		) );
+	}
+
+	/**
+	 * WP-68: Output custom CSS scoped to the chat widget.
+	 */
+	public function output_custom_css(): void {
+		if ( is_admin() ) {
+			return;
+		}
+
+		if ( ! AdventChat_Display_Rules::should_display() ) {
+			return;
+		}
+
+		$custom_css = get_option( 'adventchat_custom_css', '' );
+		if ( '' === $custom_css ) {
+			return;
+		}
+
+		// wp_strip_all_tags already applied by sanitize_callback — output scoped.
+		printf(
+			"<style id=\"adventchat-custom-css\">.adventchat-widget { %s }\n</style>\n",
+			wp_strip_all_tags( $custom_css )
+		);
 	}
 
 	/**

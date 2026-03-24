@@ -66,6 +66,47 @@
 .ac-launcher--open .ac-icon-chat { display: none; }
 .ac-launcher--open .ac-icon-close { display: block; }
 
+/* WP-64: Tab launcher */
+.ac-launcher--tab {
+  width: auto;
+  border-radius: 12px 12px 0 0;
+  padding: 8px 20px;
+  height: auto;
+  gap: 8px;
+}
+
+.ac-launcher--tab .ac-launcher__label {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--ac-font);
+}
+
+.ac-launcher--tab svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* WP-64: Custom image launcher */
+.ac-launcher--custom {
+  background: transparent;
+  box-shadow: none;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+}
+
+.ac-launcher--custom:hover {
+  transform: scale(1.05);
+  box-shadow: none;
+}
+
+.ac-launcher__img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .ac-badge {
   position: absolute;
   top: -4px;
