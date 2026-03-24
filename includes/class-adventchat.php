@@ -263,6 +263,9 @@ final class AdventChat {
 	public function register_rest_routes(): void {
 		$controller = new AdventChat_Api_Controller();
 		$controller->register_routes();
+
+		$operators = new AdventChat_Api_Operators();
+		$operators->register_routes();
 	}
 
 	/**
