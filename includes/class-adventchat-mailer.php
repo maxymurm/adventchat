@@ -104,6 +104,11 @@ class AdventChat_Mailer {
 	 * @return string Compiled HTML.
 	 */
 	private static function load_template( string $template, array $vars = array() ): string {
+		// Prevent directory traversal.
+		if ( preg_match( '/[^a-zA-Z0-9_-]/', $template ) ) {
+			return '';
+		}
+
 		$file = ADVENTCHAT_PLUGIN_DIR . "templates/emails/{$template}.php";
 		if ( ! file_exists( $file ) ) {
 			return '';
