@@ -1,0 +1,24 @@
+# AdventChat WordPress Plugin — .gitignore
+
+# Reference junctions (local only, recreate with ecosystem.md instructions)
+_references/
+
+# WordPress
+*.log
+*.bak
+*.swp
+node_modules/
+
+# Build artifacts
+/assets/js/*.min.js
+/assets/css/*.min.css
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
