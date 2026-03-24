@@ -8,16 +8,12 @@ export default defineConfig({
   build: {
     outDir: '../../../assets/js/dist',
     emptyOutDir: false,
+    cssCodeSplit: false,
     rollupOptions: {
       input: 'assets/src/console/main.tsx',
       output: {
         entryFileNames: 'console.js',
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name?.endsWith('.css')) {
-            return '../css/dist/console.css';
-          }
-          return '[name].[ext]';
-        },
+        assetFileNames: '[name].[ext]',
       },
     },
   },

@@ -78,6 +78,8 @@ final class AdventChat {
 
 		if ( is_admin() ) {
 			AdventChat_Admin::init();
+			AdventChat_Departments::init();
+			AdventChat_Macros::init();
 		}
 	}
 
