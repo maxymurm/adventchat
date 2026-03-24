@@ -29,6 +29,7 @@ class AdventChat_Settings {
 			'general'    => __( 'General', 'adventchat' ),
 			'firebase'   => __( 'Firebase', 'adventchat' ),
 			'appearance' => __( 'Appearance', 'adventchat' ),
+			'display'    => __( 'Display Rules', 'adventchat' ),
 			'chat'       => __( 'Chat', 'adventchat' ),
 			'offline'    => __( 'Offline', 'adventchat' ),
 			'privacy'    => __( 'Privacy', 'adventchat' ),
@@ -37,6 +38,7 @@ class AdventChat_Settings {
 		self::register_general_settings();
 		self::register_firebase_settings();
 		self::register_appearance_settings();
+		self::register_display_settings();
 		self::register_chat_settings();
 		self::register_offline_settings();
 		self::register_privacy_settings();
@@ -275,10 +277,28 @@ class AdventChat_Settings {
 			'default'           => 'bottom-right',
 		) );
 
+		register_setting( $group, 'adventchat_offset_x', array(
+			'type'              => 'integer',
+			'sanitize_callback' => 'absint',
+			'default'           => 20,
+		) );
+
+		register_setting( $group, 'adventchat_offset_y', array(
+			'type'              => 'integer',
+			'sanitize_callback' => 'absint',
+			'default'           => 20,
+		) );
+
 		register_setting( $group, 'adventchat_launcher_style', array(
 			'type'              => 'string',
 			'sanitize_callback' => 'sanitize_key',
 			'default'           => 'bubble',
+		) );
+
+		register_setting( $group, 'adventchat_launcher_image', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'esc_url_raw',
+			'default'           => '',
 		) );
 
 		register_setting( $group, 'adventchat_custom_css', array(
@@ -305,18 +325,124 @@ class AdventChat_Settings {
 			),
 		) );
 
+		add_settings_field( 'adventchat_offset_x', __( 'Horizontal Offset (px)', 'adventchat' ), array( __CLASS__, 'render_number_field' ), $group, $section, array(
+			'name' => 'adventchat_offset_x',
+			'min'  => 0,
+			'max'  => 200,
+		) );
+
+		add_settings_field( 'adventchat_offset_y', __( 'Vertical Offset (px)', 'adventchat' ), array( __CLASS__, 'render_number_field' ), $group, $section, array(
+			'name' => 'adventchat_offset_y',
+			'min'  => 0,
+			'max'  => 200,
+		) );
+
 		add_settings_field( 'adventchat_launcher_style', __( 'Launcher Style', 'adventchat' ), array( __CLASS__, 'render_select_field' ), $group, $section, array(
 			'name'    => 'adventchat_launcher_style',
 			'options' => array(
-				'bubble' => __( 'Bubble', 'adventchat' ),
-				'tab'    => __( 'Tab', 'adventchat' ),
+				'bubble'       => __( 'Bubble', 'adventchat' ),
+				'tab'          => __( 'Tab', 'adventchat' ),
+				'custom-image' => __( 'Custom Image', 'adventchat' ),
 			),
+		) );
+
+		add_settings_field( 'adventchat_launcher_image', __( 'Launcher Image URL', 'adventchat' ), array( __CLASS__, 'render_text_field' ), $group, $section, array(
+			'name'        => 'adventchat_launcher_image',
+			'description' => __( 'URL of custom launcher image (used when Launcher Style is "Custom Image").', 'adventchat' ),
 		) );
 
 		add_settings_field( 'adventchat_custom_css', __( 'Custom CSS', 'adventchat' ), array( __CLASS__, 'render_textarea_field' ), $group, $section, array(
 			'name'        => 'adventchat_custom_css',
 			'description' => __( 'Add custom CSS scoped to the chat widget.', 'adventchat' ),
 		) );
+	}
+
+	/* ------------------------------------------------------------------
+	 * Tab: Display Rules (WP-65)
+	 * ----------------------------------------------------------------*/
+
+	private static function register_display_settings(): void {
+		$group   = 'adventchat_display';
+		$section = 'adventchat_display_section';
+
+		register_setting( $group, 'adventchat_display_mode', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => 'show_all',
+		) );
+
+		register_setting( $group, 'adventchat_display_pages', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+			'default'           => '',
+		) );
+
+		register_setting( $group, 'adventchat_display_post_types', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+			'default'           => '',
+		) );
+
+		register_setting( $group, 'adventchat_display_roles', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+			'default'           => '',
+		) );
+
+		register_setting( $group, 'adventchat_display_hide_mobile', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '0',
+		) );
+
+		register_setting( $group, 'adventchat_display_guest_only', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '0',
+		) );
+
+		add_settings_section( $section, __( 'Display Rules', 'adventchat' ), array( __CLASS__, 'render_display_section_description' ), $group );
+
+		add_settings_field( 'adventchat_display_mode', __( 'Visibility Mode', 'adventchat' ), array( __CLASS__, 'render_select_field' ), $group, $section, array(
+			'name'    => 'adventchat_display_mode',
+			'options' => array(
+				'show_all' => __( 'Show on all pages', 'adventchat' ),
+				'include'  => __( 'Show only on specific pages', 'adventchat' ),
+				'exclude'  => __( 'Hide on specific pages', 'adventchat' ),
+			),
+		) );
+
+		add_settings_field( 'adventchat_display_pages', __( 'Page IDs', 'adventchat' ), array( __CLASS__, 'render_text_field' ), $group, $section, array(
+			'name'        => 'adventchat_display_pages',
+			'description' => __( 'Comma-separated page/post IDs (e.g., 10, 25, 102).', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_display_post_types', __( 'Post Types', 'adventchat' ), array( __CLASS__, 'render_text_field' ), $group, $section, array(
+			'name'        => 'adventchat_display_post_types',
+			'description' => __( 'Comma-separated post types (e.g., page, product).', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_display_roles', __( 'User Roles', 'adventchat' ), array( __CLASS__, 'render_text_field' ), $group, $section, array(
+			'name'        => 'adventchat_display_roles',
+			'description' => __( 'Comma-separated user roles (e.g., subscriber, customer). Leave blank for all.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_display_hide_mobile', __( 'Hide on Mobile', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_display_hide_mobile',
+			'label' => __( 'Hide the chat widget on mobile devices.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_display_guest_only', __( 'Guest Only', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_display_guest_only',
+			'label' => __( 'Show the widget only to logged-out (guest) visitors.', 'adventchat' ),
+		) );
+	}
+
+	/**
+	 * Display rules section description.
+	 */
+	public static function render_display_section_description(): void {
+		echo '<p>' . esc_html__( 'Control where and to whom the chat widget is displayed.', 'adventchat' ) . '</p>';
 	}
 
 	/* ------------------------------------------------------------------
@@ -504,6 +630,9 @@ class AdventChat_Settings {
 			esc_attr( $args['name'] ),
 			esc_attr( $value )
 		);
+		if ( ! empty( $args['description'] ) ) {
+			printf( '<p class="description">%s</p>', esc_html( $args['description'] ) );
+		}
 	}
 
 	/**
