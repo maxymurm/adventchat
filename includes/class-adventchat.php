@@ -75,6 +75,10 @@ final class AdventChat {
 	 */
 	public function init_components(): void {
 		AdventChat_Roles::init();
+
+		if ( is_admin() ) {
+			AdventChat_Admin::init();
+		}
 	}
 
 	/**
@@ -154,6 +158,45 @@ final class AdventChat {
 			array(),
 			ADVENTCHAT_VERSION
 		);
+
+		wp_localize_script( 'jquery', 'adventchatAdmin', array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'adventchat_admin_nonce' ),
+		) );
+
+		// Load Firebase SDK + console app on the Live Chat (console) page only.
+		if ( 'toplevel_page_adventchat' === $hook_suffix ) {
+			$firebase_config = AdventChat_Options::get( 'firebase_config' );
+			if ( ! empty( $firebase_config ) ) {
+				$firebase_version = '10.14.1';
+				wp_enqueue_script( 'firebase-app', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-app-compat.js", array(), $firebase_version, true );
+				wp_enqueue_script( 'firebase-auth', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-auth-compat.js", array( 'firebase-app' ), $firebase_version, true );
+				wp_enqueue_script( 'firebase-firestore', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-firestore-compat.js", array( 'firebase-app' ), $firebase_version, true );
+
+				wp_enqueue_script(
+					'adventchat-console',
+					ADVENTCHAT_PLUGIN_URL . 'assets/js/dist/console.js',
+					array( 'firebase-app', 'firebase-auth', 'firebase-firestore' ),
+					ADVENTCHAT_VERSION,
+					true
+				);
+
+				wp_enqueue_style(
+					'adventchat-console',
+					ADVENTCHAT_PLUGIN_URL . 'assets/css/dist/console.css',
+					array(),
+					ADVENTCHAT_VERSION
+				);
+
+				$config = json_decode( $firebase_config, true );
+				wp_localize_script( 'adventchat-console', 'adventchatConfig', array(
+					'firebase' => $config,
+					'siteId'   => md5( get_site_url() ),
+					'restUrl'  => esc_url_raw( rest_url( ADVENTCHAT_API_NAMESPACE ) ),
+					'restNonce'=> wp_create_nonce( 'wp_rest' ),
+				) );
+			}
+		}
 	}
 
 	/**
@@ -170,6 +213,12 @@ final class AdventChat {
 			return;
 		}
 
+		// Firebase SDK (compat builds for simple global access).
+		$firebase_version = '10.14.1';
+		wp_enqueue_script( 'firebase-app', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-app-compat.js", array(), $firebase_version, true );
+		wp_enqueue_script( 'firebase-auth', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-auth-compat.js", array( 'firebase-app' ), $firebase_version, true );
+		wp_enqueue_script( 'firebase-firestore', "https://www.gstatic.com/firebasejs/{$firebase_version}/firebase-firestore-compat.js", array( 'firebase-app' ), $firebase_version, true );
+
 		wp_enqueue_style(
 			'adventchat-widget',
 			ADVENTCHAT_PLUGIN_URL . 'assets/css/dist/widget.css',
@@ -180,10 +229,32 @@ final class AdventChat {
 		wp_enqueue_script(
 			'adventchat-widget',
 			ADVENTCHAT_PLUGIN_URL . 'assets/js/dist/widget.js',
-			array(),
+			array( 'firebase-app', 'firebase-auth', 'firebase-firestore' ),
 			ADVENTCHAT_VERSION,
 			true
 		);
+
+		$config = json_decode( $firebase_config, true );
+		wp_localize_script( 'adventchat-widget', 'adventchatConfig', array(
+			'firebase'    => $config,
+			'siteId'      => md5( get_site_url() ),
+			'restUrl'     => esc_url_raw( rest_url( ADVENTCHAT_API_NAMESPACE ) ),
+			'restNonce'   => wp_create_nonce( 'wp_rest' ),
+			'settings'    => array(
+				'position'       => get_option( 'adventchat_position', 'bottom-right' ),
+				'primaryColor'   => get_option( 'adventchat_primary_color', '#0066ff' ),
+				'secondaryColor' => get_option( 'adventchat_secondary_color', '#ffffff' ),
+				'welcomeTitle'   => get_option( 'adventchat_welcome_title', __( 'Hi there! 👋', 'adventchat' ) ),
+				'welcomeSubtitle'=> get_option( 'adventchat_welcome_subtitle', __( 'How can we help you?', 'adventchat' ) ),
+				'placeholder'    => get_option( 'adventchat_input_placeholder', __( 'Type a message…', 'adventchat' ) ),
+				'soundEnabled'   => get_option( 'adventchat_sound_enabled', '1' ),
+				'offlineEnabled' => get_option( 'adventchat_offline_enabled', '1' ),
+				'gdprEnabled'    => get_option( 'adventchat_gdpr_enabled', '0' ),
+				'prechatEnabled' => get_option( 'adventchat_prechat_enabled', '1' ),
+				'csatEnabled'    => get_option( 'adventchat_csat_enabled', '1' ),
+				'fileSharing'    => get_option( 'adventchat_file_sharing', '1' ),
+			),
+		) );
 	}
 
 	/**
@@ -192,6 +263,9 @@ final class AdventChat {
 	public function register_rest_routes(): void {
 		$controller = new AdventChat_Api_Controller();
 		$controller->register_routes();
+
+		$operators = new AdventChat_Api_Operators();
+		$operators->register_routes();
 	}
 
 	/**

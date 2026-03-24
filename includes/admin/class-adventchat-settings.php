@@ -123,6 +123,10 @@ class AdventChat_Settings {
 		add_settings_section( $section, __( 'Firebase Configuration', 'adventchat' ), array( __CLASS__, 'render_firebase_section_description' ), $group );
 
 		add_settings_field( 'adventchat_firebase_config', __( 'Web App Config (JSON)', 'adventchat' ), array( __CLASS__, 'render_firebase_config_field' ), $group, $section );
+
+		// Security Rules display section (read-only, no setting stored).
+		$rules_section = 'adventchat_firebase_rules_section';
+		add_settings_section( $rules_section, __( 'Firestore Security Rules', 'adventchat' ), array( __CLASS__, 'render_firestore_rules_section' ), $group );
 	}
 
 	/**
@@ -130,6 +134,37 @@ class AdventChat_Settings {
 	 */
 	public static function render_firebase_section_description(): void {
 		echo '<p>' . esc_html__( 'Paste your Firebase Web App configuration JSON below. You can find this in your Firebase Console → Project Settings → General → Your apps → Config.', 'adventchat' ) . '</p>';
+	}
+
+	/**
+	 * Render Firestore security rules section with copy button.
+	 */
+	public static function render_firestore_rules_section(): void {
+		$rules_file = ADVENTCHAT_PLUGIN_DIR . 'assets/firestore.rules';
+		if ( ! file_exists( $rules_file ) ) {
+			echo '<p>' . esc_html__( 'Security rules file not found.', 'adventchat' ) . '</p>';
+			return;
+		}
+
+		$rules = file_get_contents( $rules_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		echo '<p>' . esc_html__( 'Copy these rules into your Firebase Console → Firestore → Rules tab:', 'adventchat' ) . '</p>';
+		echo '<div style="position:relative;">';
+		echo '<button type="button" class="button button-small" id="adventchat-copy-rules" style="position:absolute;top:5px;right:5px;z-index:1;">' . esc_html__( 'Copy Rules', 'adventchat' ) . '</button>';
+		printf(
+			'<textarea id="adventchat-firestore-rules" rows="20" cols="80" class="large-text code" readonly>%s</textarea>',
+			esc_textarea( $rules )
+		);
+		echo '</div>';
+		echo '<script>
+			document.getElementById("adventchat-copy-rules").addEventListener("click", function() {
+				var textarea = document.getElementById("adventchat-firestore-rules");
+				navigator.clipboard.writeText(textarea.value).then(function() {
+					var btn = document.getElementById("adventchat-copy-rules");
+					btn.textContent = "' . esc_js( __( 'Copied!', 'adventchat' ) ) . '";
+					setTimeout(function() { btn.textContent = "' . esc_js( __( 'Copy Rules', 'adventchat' ) ) . '"; }, 2000);
+				});
+			});
+		</script>';
 	}
 
 	/**
@@ -142,6 +177,32 @@ class AdventChat_Settings {
 			esc_textarea( $value )
 		);
 		echo '<p class="description">' . esc_html__( 'Paste the full Firebase config object: { apiKey, authDomain, projectId, ... }', 'adventchat' ) . '</p>';
+		echo '<p style="margin-top:10px;"><button type="button" class="button" id="adventchat-test-firebase">' . esc_html__( 'Test Connection', 'adventchat' ) . '</button> <span id="adventchat-firebase-test-result"></span></p>';
+		echo '<script>
+			document.getElementById("adventchat-test-firebase").addEventListener("click", function() {
+				var btn = this;
+				var result = document.getElementById("adventchat-firebase-test-result");
+				btn.disabled = true;
+				result.textContent = "Testing…";
+				result.style.color = "";
+				fetch(adventchatAdmin.ajaxUrl, {
+					method: "POST",
+					headers: { "Content-Type": "application/x-www-form-urlencoded" },
+					body: "action=adventchat_test_firebase&nonce=" + adventchatAdmin.nonce
+				})
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					result.textContent = data.data.message;
+					result.style.color = data.success ? "green" : "red";
+					btn.disabled = false;
+				})
+				.catch(function() {
+					result.textContent = "Request failed.";
+					result.style.color = "red";
+					btn.disabled = false;
+				});
+			});
+		</script>';
 	}
 
 	/**
