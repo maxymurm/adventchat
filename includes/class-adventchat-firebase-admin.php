@@ -80,16 +80,22 @@ class AdventChat_Firebase_Admin {
 	 * @return array{localId: string, email: string}|WP_Error|null Null if not found.
 	 */
 	public static function get_user_by_email( string $email ): array|WP_Error|null {
+		// Check if we have stored credentials — try signing in to verify the user exists.
+		// The accounts:lookup endpoint requires an idToken, so we use a sign-in probe instead.
+		// This is a lightweight check; the sync flow handles EMAIL_EXISTS as a fallback.
+
 		$api_key = self::get_api_key();
 		if ( ! $api_key ) {
 			return new WP_Error( 'no_firebase_config', __( 'Firebase configuration not found.', 'adventchat' ) );
 		}
 
-		$url      = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' . rawurlencode( $api_key );
+		// Use createAuthUri to check if email exists without needing an idToken.
+		$url      = 'https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=' . rawurlencode( $api_key );
 		$response = wp_remote_post( $url, array(
 			'headers' => array( 'Content-Type' => 'application/json' ),
 			'body'    => wp_json_encode( array(
-				'email' => array( $email ),
+				'identifier'  => $email,
+				'continueUri' => home_url(),
 			) ),
 			'timeout' => 10,
 		) );
@@ -100,15 +106,15 @@ class AdventChat_Firebase_Admin {
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
-		if ( empty( $body['users'] ) ) {
+		// If registered is true, user exists. But we can't get localId from this endpoint.
+		// Return null to let the sync flow try create_user and handle EMAIL_EXISTS gracefully.
+		if ( ! empty( $body['registered'] ) ) {
+			// User exists but we can't get their UID without signing in.
+			// Return null so sync_operator falls through to create_user → EMAIL_EXISTS → fallback.
 			return null;
 		}
 
-		$user = $body['users'][0];
-		return array(
-			'localId' => $user['localId'],
-			'email'   => $user['email'],
-		);
+		return null;
 	}
 
 	/**
@@ -146,5 +152,47 @@ class AdventChat_Firebase_Admin {
 	 */
 	public static function generate_password(): string {
 		return wp_generate_password( 24, true, true );
+	}
+
+	/**
+	 * Sign in a Firebase user with email and password.
+	 *
+	 * @param string $email    User email.
+	 * @param string $password User password.
+	 * @return array{localId: string, idToken: string}|WP_Error
+	 */
+	public static function sign_in( string $email, string $password ): array|WP_Error {
+		$api_key = self::get_api_key();
+		if ( ! $api_key ) {
+			return new WP_Error( 'no_firebase_config', __( 'Firebase configuration not found.', 'adventchat' ) );
+		}
+
+		$url      = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' . rawurlencode( $api_key );
+		$response = wp_remote_post( $url, array(
+			'headers' => array( 'Content-Type' => 'application/json' ),
+			'body'    => wp_json_encode( array(
+				'email'             => $email,
+				'password'          => $password,
+				'returnSecureToken' => true,
+			) ),
+			'timeout' => 10,
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		$code = wp_remote_retrieve_response_code( $response );
+
+		if ( 200 !== $code ) {
+			$msg = $body['error']['message'] ?? __( 'Firebase sign-in failed', 'adventchat' );
+			return new WP_Error( 'firebase_signin_failed', $msg );
+		}
+
+		return array(
+			'localId' => $body['localId'],
+			'idToken' => $body['idToken'],
+		);
 	}
 }

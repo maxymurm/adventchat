@@ -13,9 +13,9 @@ AdventChat is a freemium WordPress live chat plugin powered by Firebase/Firestor
 
 | Tier | Price | Key Benefit |
 |------|-------|-------------|
-| Free | $0/mo | Bring-your-own Firebase, all features |
-| Pro | $24/mo | AdventChat hosted Firebase + mobile app |
-| Agency | $59/mo | Unlimited workspaces + white-label |
+| Free | $0/mo | Bring-your-own Firebase, all features, unlimited operators |
+| Pro | $24/mo | AdventChat hosted Firebase + mobile app, unlimited operators |
+| Agency | $59/mo | Unlimited workspaces + white-label, unlimited operators |
 
 ---
 

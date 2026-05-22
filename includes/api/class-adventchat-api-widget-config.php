@@ -90,7 +90,10 @@ class AdventChat_Api_Widget_Config extends AdventChat_Api_Controller {
 				'gdprEnabled'     => get_option( 'adventchat_gdpr_enabled', '0' ),
 				'offlineEnabled'  => get_option( 'adventchat_offline_enabled', '1' ),
 				'csatEnabled'     => get_option( 'adventchat_csat_enabled', '1' ),
-				'fileSharing'     => get_option( 'adventchat_file_sharing', '1' ),
+				'fileSharing'          => get_option( 'adventchat_file_sharing', '1' ),
+				'showAgentIdentity'    => get_option( 'adventchat_show_agent_identity', '1' ),
+				'livePreviewEnabled'        => get_option( 'adventchat_live_preview_enabled', '1' ),
+				'notifyVisitorPreview'      => get_option( 'adventchat_notify_visitor_preview', '0' ),
 			),
 		);
 

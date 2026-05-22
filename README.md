@@ -12,7 +12,8 @@
 
 ### Free Tier
 - ✨ **Real-time Messaging** — Instant delivery via Cloud Firestore
-- 💼 **Operator Console** — React 18 admin dashboard with three-column layout
+- � **Unlimited Operators** — Add as many agents as you need, no per-seat fees ever
+- �💼 **Operator Console** — React 18 admin dashboard with three-column layout
 - 📋 **Pre-chat Forms** — Collect visitor info before chat starts
 - 📧 **Offline Messages** — Accept messages when agents are offline
 - ⭐ **CSAT Ratings** — Customer satisfaction feedback

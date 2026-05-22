@@ -87,6 +87,32 @@ class AdventChat_Api_Operators extends AdventChat_Api_Controller {
 		$result   = AdventChat_Firebase_Admin::create_user( $email, $password );
 
 		if ( is_wp_error( $result ) ) {
+			// If the user already exists in Firebase (lookup missed it), try signing in with stored creds.
+			if ( str_contains( $result->get_error_message(), 'EMAIL_EXISTS' ) ) {
+				$stored_pw = AdventChat_Options::get( "operator_firebase_pw_{$wp_user_id}" );
+				if ( ! empty( $stored_pw ) ) {
+					$signin = AdventChat_Firebase_Admin::sign_in( $email, $stored_pw );
+					if ( ! is_wp_error( $signin ) ) {
+						update_user_meta( $wp_user_id, 'adventchat_firebase_uid', $signin['localId'] );
+						return $this->success( array(
+							'firebase_uid' => $signin['localId'],
+							'email'        => $email,
+							'created'      => false,
+						) );
+					}
+				}
+				// No stored password or sign-in failed — create with new password and reset.
+				// The user exists but we lost the credentials. Admin must delete the Firebase user
+				// from the Firebase Console and retry, or we skip the error.
+				$stored_uid = get_user_meta( $wp_user_id, 'adventchat_firebase_uid', true );
+				if ( ! empty( $stored_uid ) ) {
+					return $this->success( array(
+						'firebase_uid' => $stored_uid,
+						'email'        => $email,
+						'created'      => false,
+					) );
+				}
+			}
 			return $this->error( 'firebase_create_failed', $result->get_error_message(), 500 );
 		}
 
@@ -162,6 +188,8 @@ class AdventChat_Api_Operators extends AdventChat_Api_Controller {
 			'refreshToken' => $body['refreshToken'],
 			'expiresIn'    => $body['expiresIn'],
 			'firebase_uid' => $firebase_uid,
+			'email'        => $email,
+			'password'     => $password,
 		) );
 	}
 

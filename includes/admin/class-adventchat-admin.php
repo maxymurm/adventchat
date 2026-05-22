@@ -19,6 +19,7 @@ class AdventChat_Admin {
 	 */
 	public static function init(): void {
 		add_action( 'wp_ajax_adventchat_test_firebase', array( __CLASS__, 'ajax_test_firebase' ) );
+		add_action( 'wp_ajax_adventchat_save_firebase_config', array( 'AdventChat_Settings', 'ajax_save_firebase_config' ) );
 	}
 
 	/**

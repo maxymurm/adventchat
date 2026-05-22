@@ -4,7 +4,7 @@
  * Implements WP-40 through WP-52.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { initFirebase, getDb, serverTimestamp } from './utils/firebase';
@@ -32,8 +32,26 @@ function App() {
   const { user, loading: authLoading, error: authError } = useAuth();
   const agentUid = user?.uid || '';
   const agentName = user?.displayName || 'Agent';
+  const agentPhotoUrl = user?.photoURL || '';
 
-  const { waitingChats, activeChats, loading: sessionsLoading } = useSessions();
+  // Fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    const el = document.getElementById('adventchat-console-root');
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const { waitingChats, activeChats, loading: sessionsLoading } = useSessions(!!user);
   const { status, agents, updateStatus } = useAgentStatus(agentUid || null);
 
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
@@ -45,7 +63,7 @@ function App() {
     agentUid
   );
 
-  const { visitorTyping, onAgentInput } = useTyping(
+  const { visitorTyping, visitorPreview, onAgentInput } = useTyping(
     selectedSession?.id || null,
     agentUid,
     agentName
@@ -61,26 +79,29 @@ function App() {
         status: 'active',
         agentUid: agentUid,
         agentName: agentName,
+        ...(agentPhotoUrl ? { agentPhotoUrl } : {}),
       });
 
-      // Add system message.
-      await db
-        .collection('sessions')
-        .doc(session.id)
-        .collection('messages')
-        .add({
-          senderUid: 'system',
-          senderName: 'System',
-          senderType: 'system',
-          text: `${agentName} joined the chat.`,
-          timestamp: serverTimestamp(),
-          readByAgent: true,
-          readByVisitor: true,
-        });
+      // Add system message — best-effort.
+      try {
+        await db
+          .collection('sessions')
+          .doc(session.id)
+          .collection('messages')
+          .add({
+            senderUid: agentUid || 'system',
+            senderName: 'System',
+            senderType: 'system',
+            text: `${agentName} joined the chat.`,
+            timestamp: serverTimestamp(),
+            readByAgent: true,
+            readByVisitor: true,
+          });
+      } catch (_) { /* ignore */ }
 
       setSelectedSession({ ...session, status: 'active', agentUid, agentName });
     },
-    [agentUid, agentName]
+    [agentUid, agentName, agentPhotoUrl]
   );
 
   // WP-43: End chat.
@@ -88,27 +109,31 @@ function App() {
     if (!selectedSession) return;
     const db = getDb();
 
-    await db
-      .collection('sessions')
-      .doc(selectedSession.id)
-      .collection('messages')
-      .add({
-        senderUid: 'system',
-        senderName: 'System',
-        senderType: 'system',
-        text: 'Chat ended by agent.',
-        timestamp: serverTimestamp(),
-        readByAgent: true,
-        readByVisitor: true,
-      });
-
+    // Update status first so the visitor sees the chat end immediately.
     await db.collection('sessions').doc(selectedSession.id).update({
       status: 'ended',
       endedAt: serverTimestamp(),
     });
 
+    // System message is best-effort — don't let a rules error block the end.
+    try {
+      await db
+        .collection('sessions')
+        .doc(selectedSession.id)
+        .collection('messages')
+        .add({
+          senderUid: agentUid || 'system',
+          senderName: 'System',
+          senderType: 'system',
+          text: 'Chat ended by agent.',
+          timestamp: serverTimestamp(),
+          readByAgent: true,
+          readByVisitor: true,
+        });
+    } catch (_) { /* ignore */ }
+
     setSelectedSession(null);
-  }, [selectedSession]);
+  }, [selectedSession, agentUid]);
 
   // WP-50: Transfer chat.
   const transferChat = useCallback(
@@ -190,6 +215,22 @@ function App() {
         <div className="ac-console__topbar-right">
           <StatusToggle status={status} onStatusChange={updateStatus} />
           <span className="ac-console__agent-name">{agentName}</span>
+          <button
+            className={`ac-console__fullscreen-btn${isFullscreen ? ' ac-console__fullscreen-btn--active' : ''}`}
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+            aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+          >
+            {isFullscreen ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M5 1v4H1M11 1v4h4M5 15v-4H1M11 15v-4h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M1 5V1h4M15 5V1h-4M1 11v4h4M15 11v4h-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
         </div>
       </div>
 
@@ -210,6 +251,7 @@ function App() {
           messages={messages}
           agentUid={agentUid}
           visitorTyping={visitorTyping}
+          visitorPreview={visitorPreview}
           macros={macros}
           onSend={handleSend}
           onInput={onAgentInput}

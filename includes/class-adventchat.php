@@ -137,6 +137,26 @@ final class AdventChat {
 			'adventchat-settings',
 			array( $this, 'render_settings_page' )
 		);
+
+		add_submenu_page(
+			'adventchat',
+			__( 'Docs', 'adventchat' ),
+			__( 'Docs', 'adventchat' ),
+			'manage_options',
+			'adventchat-docs',
+			array( $this, 'render_docs_page' )
+		);
+
+		add_submenu_page(
+			'adventchat',
+			__( 'Plans', 'adventchat' ),
+			AdventChat_License::is_pro()
+				? __( 'Plans', 'adventchat' )
+				: '<span style="color:#00a32a;font-weight:600">' . __( 'Upgrade ★', 'adventchat' ) . '</span>',
+			'manage_options',
+			'adventchat-plans',
+			array( $this, 'render_plans_page' )
+		);
 	}
 
 	/**
@@ -161,6 +181,26 @@ final class AdventChat {
 	 */
 	public function render_settings_page(): void {
 		$template = ADVENTCHAT_PLUGIN_DIR . 'templates/admin/page-settings.php';
+		if ( file_exists( $template ) ) {
+			include $template;
+		}
+	}
+
+	/**
+	 * Render the documentation page.
+	 */
+	public function render_docs_page(): void {
+		$template = ADVENTCHAT_PLUGIN_DIR . 'templates/admin/page-docs.php';
+		if ( file_exists( $template ) ) {
+			include $template;
+		}
+	}
+
+	/**
+	 * Render the plans & upgrade page.
+	 */
+	public function render_plans_page(): void {
+		$template = ADVENTCHAT_PLUGIN_DIR . 'templates/admin/page-plans.php';
 		if ( file_exists( $template ) ) {
 			include $template;
 		}
@@ -309,7 +349,10 @@ final class AdventChat {
 				'gdprEnabled'     => get_option( 'adventchat_gdpr_enabled', '0' ),
 				'prechatEnabled'  => get_option( 'adventchat_prechat_enabled', '1' ),
 				'csatEnabled'     => get_option( 'adventchat_csat_enabled', '1' ),
-				'fileSharing'     => get_option( 'adventchat_file_sharing', '1' ),
+				'fileSharing'          => get_option( 'adventchat_file_sharing', '1' ),
+				'showAgentIdentity'    => get_option( 'adventchat_show_agent_identity', '1' ),
+				'livePreviewEnabled'        => get_option( 'adventchat_live_preview_enabled', '1' ),
+				'notifyVisitorPreview'      => get_option( 'adventchat_notify_visitor_preview', '0' ),
 			),
 		);
 

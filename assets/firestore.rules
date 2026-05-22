@@ -12,8 +12,7 @@ service cloud.firestore {
 
     function isAgent() {
       return isAuthenticated()
-        && request.auth.token.email != null
-        && request.auth.token.email_verified == true;
+        && request.auth.token.email != null;
     }
 
     function isAnonymous() {
@@ -52,9 +51,10 @@ service cloud.firestore {
         // Anyone in the session can read messages.
         allow read: if isAuthenticated();
 
-        // Visitors can create messages in their own session.
+        // Visitors can create messages matching their own UID.
+        // Agents can create any message (including system messages).
         allow create: if isAuthenticated()
-          && request.resource.data.senderUid == request.auth.uid;
+          && (request.resource.data.senderUid == request.auth.uid || isAgent());
 
         // No one can update or delete messages.
         allow update, delete: if false;
@@ -77,10 +77,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
 
       // Agents can update their own document (status, lastSeen).
-      allow update: if isOwner(agentId) && isAgent();
+      allow create, update: if isOwner(agentId) && isAgent();
 
-      // Only server (admin SDK) creates/deletes agents — deny client writes.
-      allow create, delete: if false;
+      // Only server (admin SDK) deletes agents — deny client deletes.
+      allow delete: if false;
     }
 
     // ================================================================

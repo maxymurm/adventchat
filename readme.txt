@@ -23,6 +23,7 @@ AdventChat is a modern, real-time live chat plugin for WordPress. Connect with y
 * **Chat Ratings (CSAT)** — Collect customer satisfaction ratings.
 * **File Sharing** — Share images and files via Firebase Storage.
 * **Typing Indicators** — Real-time typing status for both sides.
+* **Message Sneak Peek** — Agents see exactly what visitors are typing before they hit Send, enabling faster and more accurate replies.
 * **Sound Notifications** — Audio alerts for new messages.
 * **Chat Transcripts** — Email chat transcripts to visitors.
 * **Departments** — Route chats to the right team.

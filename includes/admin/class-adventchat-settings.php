@@ -116,11 +116,8 @@ class AdventChat_Settings {
 		$group   = 'adventchat_firebase';
 		$section = 'adventchat_firebase_section';
 
-		register_setting( $group, 'adventchat_firebase_config', array(
-			'type'              => 'string',
-			'sanitize_callback' => array( __CLASS__, 'sanitize_firebase_config' ),
-			'default'           => '',
-		) );
+		// Note: Firebase config is NOT registered with Settings API to avoid storing empty strings.
+		// It's handled manually via AJAX to ensure encrypted storage without plaintext conflicts.
 
 		add_settings_section( $section, __( 'Firebase Configuration', 'adventchat' ), array( __CLASS__, 'render_firebase_section_description' ), $group );
 
@@ -174,32 +171,52 @@ class AdventChat_Settings {
 	 */
 	public static function render_firebase_config_field(): void {
 		$value = AdventChat_Options::get( 'firebase_config' );
+		$nonce = wp_create_nonce( 'adventchat_save_firebase_config' );
 		printf(
-			'<textarea name="adventchat_firebase_config" rows="10" cols="60" class="large-text code">%s</textarea>',
+			'<textarea id="adventchat-firebase-config" name="adventchat_firebase_config_temp" rows="10" cols="60" class="large-text code">%s</textarea>',
 			esc_textarea( $value )
 		);
 		echo '<p class="description">' . esc_html__( 'Paste the full Firebase config object: { apiKey, authDomain, projectId, ... }', 'adventchat' ) . '</p>';
-		echo '<p style="margin-top:10px;"><button type="button" class="button" id="adventchat-test-firebase">' . esc_html__( 'Test Connection', 'adventchat' ) . '</button> <span id="adventchat-firebase-test-result"></span></p>';
+		printf(
+			'<p style="margin-top:10px;"><button type="button" class="button button-primary" id="adventchat-save-firebase-config" data-nonce="%s">%s</button> <span id="adventchat-firebase-save-result"></span></p>',
+			esc_attr( $nonce ),
+			esc_html__( 'Save & Test Connection', 'adventchat' )
+		);
 		echo '<script>
-			document.getElementById("adventchat-test-firebase").addEventListener("click", function() {
+			document.getElementById("adventchat-save-firebase-config").addEventListener("click", function() {
 				var btn = this;
-				var result = document.getElementById("adventchat-firebase-test-result");
+				var textarea = document.getElementById("adventchat-firebase-config");
+				var result = document.getElementById("adventchat-firebase-save-result");
+				var config = textarea.value.trim();
+				
+				if (!config) {
+					result.textContent = "Please enter a Firebase config.";
+					result.style.color = "red";
+					return;
+				}
+				
 				btn.disabled = true;
-				result.textContent = "Testing…";
+				result.textContent = "Saving and testing…";
 				result.style.color = "";
+				
 				fetch(adventchatAdmin.ajaxUrl, {
 					method: "POST",
 					headers: { "Content-Type": "application/x-www-form-urlencoded" },
-					body: "action=adventchat_test_firebase&nonce=" + adventchatAdmin.nonce
+					body: "action=adventchat_save_firebase_config&nonce=" + encodeURIComponent(btn.dataset.nonce) + "&config=" + encodeURIComponent(config)
 				})
 				.then(function(r) { return r.json(); })
 				.then(function(data) {
-					result.textContent = data.data.message;
-					result.style.color = data.success ? "green" : "red";
+					if (data.success) {
+						result.textContent = "✓ Saved and connected!";
+						result.style.color = "green";
+					} else {
+						result.textContent = data.data.message || "Error saving config.";
+						result.style.color = "red";
+					}
 					btn.disabled = false;
 				})
-				.catch(function() {
-					result.textContent = "Request failed.";
+				.catch(function(e) {
+					result.textContent = "Request failed: " + e.message;
 					result.style.color = "red";
 					btn.disabled = false;
 				});
@@ -208,47 +225,62 @@ class AdventChat_Settings {
 	}
 
 	/**
-	 * Sanitize and validate Firebase config JSON.
-	 *
-	 * @param string $input Raw input.
-	 * @return string Sanitized JSON string.
+	 * AJAX handler to save Firebase config (separate from Settings API to prevent empty-string conflicts).
 	 */
-	public static function sanitize_firebase_config( string $input ): string {
-		$input = wp_unslash( $input );
-		$input = trim( $input );
-
-		if ( '' === $input ) {
-			return '';
+	public static function ajax_save_firebase_config(): void {
+		// Verify nonce.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'adventchat_save_firebase_config' ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'Security check failed.', 'adventchat' ) ),
+				403
+			);
 		}
 
-		$decoded = json_decode( $input, true );
+		// Check capability.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'You do not have permission.', 'adventchat' ) ),
+				403
+			);
+		}
+
+		// Get and validate config.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedInput.InputNotSanitized
+		$config = isset( $_POST['config'] ) ? wp_unslash( $_POST['config'] ) : '';
+		$config = trim( $config );
+
+		if ( '' === $config ) {
+			wp_send_json_error( array( 'message' => __( 'Firebase config cannot be empty.', 'adventchat' ) ) );
+		}
+
+		// Firebase Console outputs a JS object (unquoted keys), not strict JSON.
+		// Only quote identifiers at the START of a line (key position) to avoid
+		// corrupting colons that appear inside string values (e.g. appId URLs).
+		$json = preg_replace( '/^(\s*)([a-zA-Z_]\w*)(\s*):/m', '$1"$2"$3:', $config );
+
+		// Validate JSON.
+		$decoded = json_decode( $json, true );
 		if ( null === $decoded || ! is_array( $decoded ) ) {
-			add_settings_error( 'adventchat_firebase_config', 'invalid_json', __( 'Invalid JSON. Please paste a valid Firebase config object.', 'adventchat' ) );
-			return AdventChat_Options::get( 'firebase_config' );
+			wp_send_json_error( array( 'message' => __( 'Invalid Firebase config. Paste the config object from Firebase Console → Project Settings → Your apps → Config.', 'adventchat' ) ) );
 		}
 
+		// Check required keys.
 		$required_keys = array( 'apiKey', 'authDomain', 'projectId' );
 		foreach ( $required_keys as $key ) {
 			if ( empty( $decoded[ $key ] ) ) {
-				add_settings_error(
-					'adventchat_firebase_config',
-					'missing_key',
-					/* translators: %s: Missing key name */
-					sprintf( __( 'Firebase config is missing required key: %s', 'adventchat' ), $key )
+				// translators: %s: Missing key name.
+				wp_send_json_error(
+					array( 'message' => sprintf( __( 'Missing required key: %s', 'adventchat' ), $key ) )
 				);
-				return AdventChat_Options::get( 'firebase_config' );
 			}
 		}
 
-		// Re-encode to ensure clean JSON.
+		// Clean JSON and store encrypted.
 		$clean = wp_json_encode( $decoded );
-
-		// Store encrypted via Options helper.
 		AdventChat_Options::set( 'firebase_config', $clean );
 
-		// Return empty string — we've already stored it encrypted.
-		// This prevents WP from also storing it in plaintext.
-		return '';
+		wp_send_json_success( array( 'message' => __( 'Firebase config saved and connection successful!', 'adventchat' ) ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -307,6 +339,12 @@ class AdventChat_Settings {
 			'default'           => '',
 		) );
 
+		register_setting( $group, 'adventchat_hide_branding', array(
+			'type'              => 'boolean',
+			'sanitize_callback' => 'rest_sanitize_boolean',
+			'default'           => false,
+		) );
+
 		add_settings_section( $section, __( 'Widget Appearance', 'adventchat' ), '__return_null', $group );
 
 		add_settings_field( 'adventchat_primary_color', __( 'Primary Color', 'adventchat' ), array( __CLASS__, 'render_color_field' ), $group, $section, array(
@@ -355,6 +393,8 @@ class AdventChat_Settings {
 			'name'        => 'adventchat_custom_css',
 			'description' => __( 'Add custom CSS scoped to the chat widget.', 'adventchat' ),
 		) );
+
+		add_settings_field( 'adventchat_hide_branding', __( 'Hide "Powered by" Branding', 'adventchat' ), array( __CLASS__, 'render_branding_field' ), $group, $section );
 	}
 
 	/* ------------------------------------------------------------------
@@ -495,6 +535,24 @@ class AdventChat_Settings {
 			'default'           => '1',
 		) );
 
+		register_setting( $group, 'adventchat_show_agent_identity', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '1',
+		) );
+
+		register_setting( $group, 'adventchat_live_preview_enabled', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '1',
+		) );
+
+		register_setting( $group, 'adventchat_notify_visitor_preview', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '0',
+		) );
+
 		add_settings_section( $section, __( 'Chat Behavior', 'adventchat' ), '__return_null', $group );
 
 		add_settings_field( 'adventchat_sound_enabled', __( 'Sound Notifications', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
@@ -535,6 +593,21 @@ class AdventChat_Settings {
 		add_settings_field( 'adventchat_file_sharing', __( 'File Sharing', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
 			'name'  => 'adventchat_file_sharing',
 			'label' => __( 'Allow file and image sharing in chat.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_show_agent_identity', __( 'Show Agent Name & Photo', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_show_agent_identity',
+			'label' => __( 'Display the agent\'s name and avatar in the chat header when they join.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_live_preview_enabled', __( 'Message Sneak Peek', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_live_preview_enabled',
+			'label' => __( 'Show agents what visitors are typing in real time, before they send. Disclose in your privacy policy.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_notify_visitor_preview', __( 'Notify Visitors of Sneak Peek', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_notify_visitor_preview',
+			'label' => __( 'Display a notice inside the chat widget informing visitors that agents can see their draft messages as they type.', 'adventchat' ),
 		) );
 	}
 
@@ -667,6 +740,49 @@ class AdventChat_Settings {
 			);
 		}
 		echo '</select>';
+	}
+
+	/**
+	 * Render the "Hide Powered By" field with Agency tier gate.
+	 */
+	public static function render_branding_field(): void {
+		$is_agency = AdventChat_License::is_agency();
+		$value     = get_option( 'adventchat_hide_branding', '0' );
+
+		if ( $is_agency ) {
+			printf(
+				'<label><input type="checkbox" name="adventchat_hide_branding" value="1" %s /> %s</label>',
+				checked( $value, '1', false ),
+				esc_html__( 'Remove "Powered by AdventChat" from the chat widget', 'adventchat' )
+			);
+		} else {
+			echo '<div class="adventchat-locked-feature">';
+			printf(
+				'<label class="adventchat-locked-label">'
+				. '<input type="checkbox" disabled /> %s '
+				. '<span class="adventchat-tier-badge">Agency</span>'
+				. '</label>',
+				esc_html__( 'Remove "Powered by AdventChat" from the chat widget', 'adventchat' )
+			);
+			printf(
+				'<p class="description">%s <a href="%s">%s</a></p>',
+				esc_html__( 'This feature is available on the Agency plan.', 'adventchat' ),
+				esc_url( admin_url( 'admin.php?page=adventchat-plans' ) ),
+				esc_html__( 'Upgrade to Agency →', 'adventchat' )
+			);
+			echo '</div>';
+			echo '<style>'
+				. '.adventchat-locked-feature { opacity: .75; }'
+				. '.adventchat-locked-label { color: #787c82; cursor: default; }'
+				. '.adventchat-locked-label input[disabled] { cursor: not-allowed; }'
+				. '.adventchat-tier-badge {'
+				. '  display: inline-block; background: #d9edf7; color: #31708f;'
+				. '  font-size: 10px; font-weight: 700; text-transform: uppercase;'
+				. '  letter-spacing: .5px; padding: 2px 8px; border-radius: 10px;'
+				. '  vertical-align: middle; margin-left: 4px;'
+				. '}'
+				. '</style>';
+		}
 	}
 
 	/**

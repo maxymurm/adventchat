@@ -10,6 +10,7 @@ interface Props {
   messages: ChatMessage[];
   agentUid: string;
   visitorTyping: boolean;
+  visitorPreview?: string;
   macros: Macro[];
   onSend: (text: string, isNote?: boolean) => void;
   onInput: () => void;
@@ -25,18 +26,19 @@ function formatTime(ts: any): string {
 }
 
 export function ChatWindow({
-  session, messages, agentUid, visitorTyping,
+  session, messages, agentUid, visitorTyping, visitorPreview,
   macros, onSend, onInput, onEndChat, onTransfer, findMacro,
 }: Props) {
   const [input, setInput] = useState('');
   const [isNote, setIsNote] = useState(false);
   const [macroSuggestion, setMacroSuggestion] = useState<Macro | null>(null);
-  const messagesEnd = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, visitorTyping, visitorPreview]);
 
   if (!session) {
     return (
@@ -94,6 +96,13 @@ export function ChatWindow({
         <div className="ac-chat-header__info">
           <strong>{session.visitorName || 'Visitor'}</strong>
           <span className="ac-chat-header__email">{session.visitorEmail}</span>
+          {visitorTyping && (
+            <span className="ac-chat-header__typing">
+              {visitorPreview
+                ? <>typing: “<em>{visitorPreview}</em>”</>
+                : <>typing…</>}
+            </span>
+          )}
         </div>
         <div className="ac-chat-header__actions">
           <button className="ac-btn ac-btn--small" onClick={onTransfer} title="Transfer chat">
@@ -106,7 +115,7 @@ export function ChatWindow({
       </div>
 
       {/* Messages */}
-      <div className="ac-chat-messages">
+      <div className="ac-chat-messages" ref={messagesContainerRef}>
         {messages.map(msg => (
           <div
             key={msg.id}
@@ -130,12 +139,19 @@ export function ChatWindow({
         ))}
         {visitorTyping && (
           <div className="ac-chat-msg ac-chat-msg--typing">
-            <span className="ac-typing-dots">
-              <span /><span /><span />
-            </span>
+            {visitorPreview ? (
+              <div className="ac-chat-msg__preview" title="Visitor is typing (live preview)">
+                <span className="ac-chat-msg__preview-label">Typing…</span>
+                <span className="ac-chat-msg__preview-text">{visitorPreview}</span>
+                <span className="ac-chat-msg__preview-caret" />
+              </div>
+            ) : (
+              <span className="ac-typing-dots">
+                <span /><span /><span />
+              </span>
+            )}
           </div>
         )}
-        <div ref={messagesEnd} />
       </div>
 
       {/* Input */}
