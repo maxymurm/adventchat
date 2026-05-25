@@ -100,7 +100,7 @@ class AdventChat_Options {
 	 * @param string $value Base64-encoded ciphertext.
 	 * @return string|false Decrypted value or false on failure.
 	 */
-	private static function decrypt( string $value ): string|false {
+	private static function decrypt( string $value ) {
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		$raw = base64_decode( $value, true );
 		if ( false === $raw || strlen( $raw ) < 17 ) {

@@ -155,7 +155,7 @@ class AdventChat_Push {
 	 *
 	 * @return string|false
 	 */
-	private static function get_access_token(): string|false {
+	private static function get_access_token() {
 		$firebase_admin = new AdventChat_Firebase_Admin();
 		return $firebase_admin->get_access_token();
 	}
