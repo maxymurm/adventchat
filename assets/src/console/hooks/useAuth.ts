@@ -1,17 +1,28 @@
 /**
- * WP-41: useAuth — Handles operator Firebase sign-in via WP REST API.
+ * WP-41: useAuth — Signs the operator in to Firebase.
+ *
+ * The console asks WordPress for a short-lived token (proving the operator's WordPress session), then exchanges it
+ * for a Firebase session through the `agentSignIn` Cloud Function. No Firebase password is involved.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { getAuth } from '../utils/firebase';
 import { apiFetch } from '../utils/api';
 
-declare const firebase: any;
-
 interface AuthState {
   user: any | null;
   loading: boolean;
   error: string | null;
+}
+
+interface AgentSignInResult {
+  token: string;
+  displayName?: string;
+}
+
+function agentSignInUrl(): string {
+  const projectId = window.adventchatConfig.firebase.projectId;
+  return `https://us-central1-${projectId}.cloudfunctions.net/agentSignIn`;
 }
 
 export function useAuth() {
@@ -25,23 +36,27 @@ export function useAuth() {
     try {
       setState(s => ({ ...s, loading: true, error: null }));
 
-      // First sync the operator (creates Firebase user if needed).
-      await apiFetch('/operators/sync', { method: 'POST' });
-
-      // Get Firebase credentials.
       const tokenResp = await apiFetch<{
         success: boolean;
-        data: { idToken: string; firebase_uid: string; email: string; password: string };
-      }>('/operators/token', { method: 'POST' });
+        data: { wpToken: string };
+      }>('/operators/agent-token', { method: 'POST' });
+      const wpToken = (tokenResp.data || (tokenResp as any)).wpToken;
 
-      const tokenData = tokenResp.data || tokenResp;
-      const auth = getAuth();
+      const res = await fetch(agentSignInUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { wpToken } }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.error?.message || 'Could not start your chat session.');
+      }
+      const { token, displayName } = body.result as AgentSignInResult;
 
-      // Sign in to Firebase client SDK with email + password.
-      const userCredential = await auth.signInWithEmailAndPassword(
-        tokenData.email,
-        tokenData.password
-      );
+      const userCredential = await getAuth().signInWithCustomToken(token);
+      if (displayName && userCredential.user.displayName !== displayName) {
+        await userCredential.user.updateProfile({ displayName }).catch(() => undefined);
+      }
 
       setState({
         user: userCredential.user,

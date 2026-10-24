@@ -2,7 +2,8 @@
 /**
  * REST API endpoints for operator authentication.
  *
- * Handles syncing WordPress operators to Firebase Auth (Email/Password).
+ * Operators sign in to Firebase through the `agentSignIn` Cloud Function, which verifies a short-lived WordPress
+ * token issued here. No Firebase passwords are created or stored by WordPress.
  *
  * @package AdventChat
  */
@@ -15,18 +16,19 @@ defined( 'ABSPATH' ) || exit;
 class AdventChat_Api_Operators extends AdventChat_Api_Controller {
 
 	/**
+	 * Lifetime of the token handed to the console, in seconds.
+	 *
+	 * @var int
+	 */
+	private const TOKEN_TTL = 120;
+
+	/**
 	 * Register operator auth routes.
 	 */
 	public function register_routes(): void {
-		register_rest_route( $this->namespace, '/operators/sync', array(
+		register_rest_route( $this->namespace, '/operators/agent-token', array(
 			'methods'             => WP_REST_Server::CREATABLE,
-			'callback'            => array( $this, 'sync_operator' ),
-			'permission_callback' => array( $this, 'admin_access' ),
-		) );
-
-		register_rest_route( $this->namespace, '/operators/token', array(
-			'methods'             => WP_REST_Server::CREATABLE,
-			'callback'            => array( $this, 'get_operator_token' ),
+			'callback'            => array( $this, 'get_agent_token' ),
 			'permission_callback' => array( $this, 'operator_access' ),
 		) );
 
@@ -46,150 +48,32 @@ class AdventChat_Api_Operators extends AdventChat_Api_Controller {
 	}
 
 	/**
-	 * Sync a WP user to Firebase Auth — creates a Firebase user if one doesn't exist.
+	 * Issue a short-lived WordPress JWT for the current operator.
+	 *
+	 * The console exchanges it for a Firebase session via the `agentSignIn` Cloud Function, which re-verifies the
+	 * token and the operator role against this site. The token uses the same format as the JWT Authentication
+	 * plugin (HS256, same secret), so it is also accepted by the REST API.
 	 *
 	 * @param WP_REST_Request $request Request.
 	 * @return WP_REST_Response|WP_Error
 	 */
-	public function sync_operator( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$wp_user_id = $request->get_param( 'user_id' );
-
-		if ( empty( $wp_user_id ) ) {
-			// Default to current user.
-			$wp_user_id = get_current_user_id();
+	public function get_agent_token( WP_REST_Request $request ) {
+		if ( ! defined( 'JWT_AUTH_SECRET_KEY' ) || '' === JWT_AUTH_SECRET_KEY ) {
+			return $this->error( 'jwt_not_configured', __( 'Operator sign-in is not configured on this site.', 'adventchat' ), 500 );
 		}
 
-		$wp_user = get_userdata( (int) $wp_user_id );
-		if ( ! $wp_user ) {
-			return $this->error( 'user_not_found', __( 'WordPress user not found.', 'adventchat' ), 404 );
-		}
-
-		$email = $wp_user->user_email;
-
-		// Check if Firebase user already exists.
-		$existing = AdventChat_Firebase_Admin::get_user_by_email( $email );
-		if ( is_wp_error( $existing ) ) {
-			return $this->error( 'firebase_error', $existing->get_error_message(), 500 );
-		}
-
-		if ( null !== $existing ) {
-			// Already synced — update WP user meta with Firebase UID.
-			update_user_meta( $wp_user_id, 'adventchat_firebase_uid', $existing['localId'] );
-			return $this->success( array(
-				'firebase_uid' => $existing['localId'],
-				'email'        => $email,
-				'created'      => false,
-			) );
-		}
-
-		// Create Firebase user.
-		$password = AdventChat_Firebase_Admin::generate_password();
-		$result   = AdventChat_Firebase_Admin::create_user( $email, $password );
-
-		if ( is_wp_error( $result ) ) {
-			// If the user already exists in Firebase (lookup missed it), try signing in with stored creds.
-			if ( str_contains( $result->get_error_message(), 'EMAIL_EXISTS' ) ) {
-				$stored_pw = AdventChat_Options::get( "operator_firebase_pw_{$wp_user_id}" );
-				if ( ! empty( $stored_pw ) ) {
-					$signin = AdventChat_Firebase_Admin::sign_in( $email, $stored_pw );
-					if ( ! is_wp_error( $signin ) ) {
-						update_user_meta( $wp_user_id, 'adventchat_firebase_uid', $signin['localId'] );
-						return $this->success( array(
-							'firebase_uid' => $signin['localId'],
-							'email'        => $email,
-							'created'      => false,
-						) );
-					}
-				}
-				// No stored password or sign-in failed — create with new password and reset.
-				// The user exists but we lost the credentials. Admin must delete the Firebase user
-				// from the Firebase Console and retry, or we skip the error.
-				$stored_uid = get_user_meta( $wp_user_id, 'adventchat_firebase_uid', true );
-				if ( ! empty( $stored_uid ) ) {
-					return $this->success( array(
-						'firebase_uid' => $stored_uid,
-						'email'        => $email,
-						'created'      => false,
-					) );
-				}
-			}
-			return $this->error( 'firebase_create_failed', $result->get_error_message(), 500 );
-		}
-
-		// Store Firebase UID in WP user meta.
-		update_user_meta( $wp_user_id, 'adventchat_firebase_uid', $result['localId'] );
-
-		// Store encrypted password so we can sign the operator in later.
-		AdventChat_Options::set( "operator_firebase_pw_{$wp_user_id}", $password );
+		$now     = time();
+		$payload = array(
+			'iss'  => get_bloginfo( 'url' ),
+			'iat'  => $now,
+			'nbf'  => $now,
+			'exp'  => $now + self::TOKEN_TTL,
+			'data' => array( 'user' => array( 'id' => get_current_user_id() ) ),
+		);
 
 		return $this->success( array(
-			'firebase_uid' => $result['localId'],
-			'email'        => $email,
-			'created'      => true,
-		), 201 );
-	}
-
-	/**
-	 * Get a Firebase custom token / sign-in credentials for the current operator.
-	 *
-	 * The console JS will use this to sign in to Firebase.
-	 *
-	 * @param WP_REST_Request $request Request.
-	 * @return WP_REST_Response|WP_Error
-	 */
-	public function get_operator_token( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$user_id = get_current_user_id();
-		$email   = wp_get_current_user()->user_email;
-
-		$firebase_uid = get_user_meta( $user_id, 'adventchat_firebase_uid', true );
-		if ( empty( $firebase_uid ) ) {
-			return $this->error( 'not_synced', __( 'Operator not synced to Firebase. Please sync first.', 'adventchat' ), 400 );
-		}
-
-		$password = AdventChat_Options::get( "operator_firebase_pw_{$user_id}" );
-		if ( empty( $password ) ) {
-			return $this->error( 'no_credentials', __( 'Firebase credentials not found. Re-sync the operator.', 'adventchat' ), 400 );
-		}
-
-		// Sign in via REST API to get an idToken.
-		$config_json = AdventChat_Options::get( 'firebase_config' );
-		$config      = json_decode( $config_json, true );
-		$api_key     = $config['apiKey'] ?? '';
-
-		if ( empty( $api_key ) ) {
-			return $this->error( 'no_config', __( 'Firebase config not found.', 'adventchat' ), 500 );
-		}
-
-		$url      = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' . rawurlencode( $api_key );
-		$response = wp_remote_post( $url, array(
-			'headers' => array( 'Content-Type' => 'application/json' ),
-			'body'    => wp_json_encode( array(
-				'email'             => $email,
-				'password'          => $password,
-				'returnSecureToken' => true,
-			) ),
-			'timeout' => 10,
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			return $this->error( 'firebase_auth_failed', $response->get_error_message(), 500 );
-		}
-
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-		$code = wp_remote_retrieve_response_code( $response );
-
-		if ( 200 !== $code ) {
-			$msg = $body['error']['message'] ?? __( 'Firebase sign-in failed', 'adventchat' );
-			return $this->error( 'firebase_signin_failed', $msg, 500 );
-		}
-
-		return $this->success( array(
-			'idToken'      => $body['idToken'],
-			'refreshToken' => $body['refreshToken'],
-			'expiresIn'    => $body['expiresIn'],
-			'firebase_uid' => $firebase_uid,
-			'email'        => $email,
-			'password'     => $password,
+			'wpToken'   => self::sign_jwt( $payload, JWT_AUTH_SECRET_KEY ),
+			'expiresIn' => self::TOKEN_TTL,
 		) );
 	}
 
@@ -217,5 +101,25 @@ class AdventChat_Api_Operators extends AdventChat_Api_Controller {
 		AdventChat_Options::delete( "operator_firebase_pw_{$wp_user_id}" );
 
 		return $this->success( array( 'deleted' => true ) );
+	}
+
+	/**
+	 * Sign a JWT with HS256.
+	 *
+	 * @param array  $payload Claims.
+	 * @param string $secret  Signing secret.
+	 * @return string
+	 */
+	private static function sign_jwt( array $payload, string $secret ): string {
+		$encode = static function ( string $data ): string {
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+			return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' );
+		};
+
+		$header  = $encode( wp_json_encode( array( 'typ' => 'JWT', 'alg' => 'HS256' ) ) );
+		$body    = $encode( wp_json_encode( $payload ) );
+		$signing = $header . '.' . $body;
+
+		return $signing . '.' . $encode( hash_hmac( 'sha256', $signing, $secret, true ) );
 	}
 }
