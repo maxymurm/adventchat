@@ -28,6 +28,7 @@ class AdventChat_Api_Visitor extends AdventChat_Api_Controller {
 				'message'    => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_textarea_field' ),
 				'department' => array( 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'default' => '' ),
 				'consent'    => array( 'required' => false, 'type' => 'boolean', 'default' => false ),
+				'source'     => array( 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_key', 'default' => '' ),
 			),
 		) );
 
@@ -80,6 +81,11 @@ class AdventChat_Api_Visitor extends AdventChat_Api_Controller {
 
 		// Send notifications.
 		AdventChat_Mailer::send_offline_notification( $data );
+
+		// Messages from the mobile app are already written to Firestore by the app itself.
+		if ( 'app' !== $request->get_param( 'source' ) ) {
+			AdventChat_Firestore_Mirror::offline_message( $data );
+		}
 
 		return new WP_REST_Response( array( 'success' => true ), 201 );
 	}
