@@ -325,7 +325,7 @@
         '<div class="ac-footer-actions" id="ac-footer-actions" style="display:none;">' +
           '<button class="ac-footer-btn" id="ac-transcript-btn" type="button">Email transcript</button>' +
         '</div>' +
-        '<div class="ac-powered">Powered by <a href="https://adventchat.com" target="_blank" rel="noopener">AdventChat</a></div>' +
+        '<div class="ac-powered">Powered by <a href="https://adventit.digital/" target="_blank" rel="noopener">Advent Digital</a></div>' +
       '</div>' +
       '<button class="' + launcherClass + '" id="ac-launcher" type="button" aria-label="Toggle chat">' +
         launcherContent +

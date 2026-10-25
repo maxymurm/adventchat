@@ -42,7 +42,7 @@ defined( 'ABSPATH' ) || exit;
 			<?php endif; ?>
 		<?php endforeach; ?>
 
-		<p style="margin-top:24px;font-size:12px;color:#9ca3af;">Powered by AdventChat · <?php echo esc_html( $site_name ); ?></p>
+		<p style="margin-top:24px;font-size:12px;color:#9ca3af;">Powered by <a href="https://adventit.digital/" style="color:#9ca3af;">Advent Digital</a> · <?php echo esc_html( $site_name ); ?></p>
 	</td></tr>
 </table>
 </body>

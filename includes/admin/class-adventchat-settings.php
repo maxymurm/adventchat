@@ -753,7 +753,7 @@ class AdventChat_Settings {
 			printf(
 				'<label><input type="checkbox" name="adventchat_hide_branding" value="1" %s /> %s</label>',
 				checked( $value, '1', false ),
-				esc_html__( 'Remove "Powered by AdventChat" from the chat widget', 'adventchat' )
+				esc_html__( 'Remove "Powered by Advent Digital" from the chat widget', 'adventchat' )
 			);
 		} else {
 			echo '<div class="adventchat-locked-feature">';
@@ -762,7 +762,7 @@ class AdventChat_Settings {
 				. '<input type="checkbox" disabled /> %s '
 				. '<span class="adventchat-tier-badge">Agency</span>'
 				. '</label>',
-				esc_html__( 'Remove "Powered by AdventChat" from the chat widget', 'adventchat' )
+				esc_html__( 'Remove "Powered by Advent Digital" from the chat widget', 'adventchat' )
 			);
 			printf(
 				'<p class="description">%s <a href="%s">%s</a></p>',
