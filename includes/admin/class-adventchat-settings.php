@@ -535,6 +535,24 @@ class AdventChat_Settings {
 			'default'           => '1',
 		) );
 
+		register_setting( $group, 'adventchat_show_agent_identity', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '1',
+		) );
+
+		register_setting( $group, 'adventchat_live_preview_enabled', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '1',
+		) );
+
+		register_setting( $group, 'adventchat_notify_visitor_preview', array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_key',
+			'default'           => '0',
+		) );
+
 		add_settings_section( $section, __( 'Chat Behavior', 'adventchat' ), '__return_null', $group );
 
 		add_settings_field( 'adventchat_sound_enabled', __( 'Sound Notifications', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
@@ -575,6 +593,21 @@ class AdventChat_Settings {
 		add_settings_field( 'adventchat_file_sharing', __( 'File Sharing', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
 			'name'  => 'adventchat_file_sharing',
 			'label' => __( 'Allow file and image sharing in chat.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_show_agent_identity', __( 'Show Agent Name & Photo', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_show_agent_identity',
+			'label' => __( 'Display the agent\'s name and avatar in the chat header when they join.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_live_preview_enabled', __( 'Message Sneak Peek', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_live_preview_enabled',
+			'label' => __( 'Show agents what visitors are typing in real time, before they send. Disclose in your privacy policy.', 'adventchat' ),
+		) );
+
+		add_settings_field( 'adventchat_notify_visitor_preview', __( 'Notify Visitors of Sneak Peek', 'adventchat' ), array( __CLASS__, 'render_checkbox_field' ), $group, $section, array(
+			'name'  => 'adventchat_notify_visitor_preview',
+			'label' => __( 'Display a notice inside the chat widget informing visitors that agents can see their draft messages as they type.', 'adventchat' ),
 		) );
 	}
 

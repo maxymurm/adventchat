@@ -41,6 +41,7 @@
     visitorEmail: '',
     unreadCount: 0,
     pendingStart: false,
+    agentJoined: false,
   };
 
   /* ------------------------------------------------------------------ */
@@ -306,6 +307,10 @@
           '<p class="ac-header__title">' + escHtml(settings.welcomeTitle || 'Hi there!') + '</p>' +
           '<p class="ac-header__subtitle">' + escHtml(settings.welcomeSubtitle || 'How can we help you?') + '</p>' +
           '<p class="ac-header__status" id="ac-status">Online</p>' +
+          '<div class="ac-agent-info" id="ac-agent-info" style="display:none;">' +
+            '<div class="ac-agent-avatar" id="ac-agent-avatar"></div>' +
+            '<span class="ac-agent-name" id="ac-agent-name"></span>' +
+          '</div>' +
         '</div>' +
         buildPrechatForm() +
         '<div class="ac-messages" id="ac-messages" style="display:none;"></div>' +
@@ -415,12 +420,23 @@
           sendMessage();
         }
       });
-      // WP-35: typing indicator
+      // WP-35: typing indicator + live preview.
+      // Write immediately on first key and at most every 300 ms after that.
+      // A separate 2 s idle timer clears isTyping once the visitor stops.
       var typingTimeout;
+      var previewThrottle = 0;
       textInput.addEventListener('input', function () {
-        setVisitorTyping(true);
+        var current = textInput.value;
+        var now = Date.now();
+        if (now - previewThrottle > 300) {
+          previewThrottle = now;
+          setVisitorTyping(true, settings.livePreviewEnabled === '1' ? current : undefined);
+        }
         clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(function () { setVisitorTyping(false); }, 2000);
+        typingTimeout = setTimeout(function () {
+          previewThrottle = 0; // reset so next session fires immediately
+          setVisitorTyping(false);
+        }, 2000);
       });
     }
 
@@ -532,6 +548,11 @@
 
       addSystemMessage('Chat started. An agent will be with you shortly.');
 
+      // WP-35: Notify visitor that their draft messages are visible to agents.
+      if (settings.livePreviewEnabled === '1' && settings.notifyVisitorPreview === '1') {
+        addSystemMessage('Note: Agents can see what you’re typing as you type it.');
+      }
+
       listenForMessages();
       listenForAgentTyping();
       listenForSessionStatus();
@@ -611,12 +632,25 @@
   /* ------------------------------------------------------------------ */
   /*  WP-35: Typing indicators                                           */
   /* ------------------------------------------------------------------ */
-  function setVisitorTyping(isTyping) {
+  function setVisitorTyping(isTyping, previewText) {
     if (!state.sessionId || !state.user) return;
+    var payload = {
+      isTyping: isTyping,
+      name: state.visitorName || 'Visitor',
+      role: 'visitor',
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    // Only include the draft when the live preview feature is enabled.
+    if (settings.livePreviewEnabled === '1') {
+      payload.previewText = isTyping ? (previewText || '') : '';
+    }
+    console.log('[AdventChat] writing typing', state.sessionId, state.user.uid, payload);
     db.collection('sessions').doc(state.sessionId)
       .collection('typing').doc(state.user.uid)
-      .set({ isTyping: isTyping, timestamp: firebase.firestore.FieldValue.serverTimestamp() })
-      .catch(function () {});
+      .set(payload)
+      .catch(function (err) {
+        console.error('[AdventChat] Typing write failed:', err.code, err.message);
+      });
   }
 
   function listenForAgentTyping() {
@@ -629,7 +663,10 @@
         var agentName = '';
         snapshot.forEach(function (doc) {
           var data = doc.data();
-          if (doc.id !== state.user.uid && data.isTyping) {
+          // Filter by role rather than UID — visitor + agent tabs may share
+          // the same anonymous Firebase auth UID in the same browser.
+          var isAgentDoc = data.role ? data.role === 'agent' : doc.id !== state.user.uid;
+          if (isAgentDoc && data.isTyping) {
             agentTyping = true;
             agentName = data.name || 'Agent';
           }
@@ -660,7 +697,49 @@
     db.collection('sessions').doc(state.sessionId)
       .onSnapshot(function (doc) {
         var data = doc.data();
-        if (data && data.status === 'ended') {
+        if (!data) return;
+
+        if (data.status === 'active' && !state.agentJoined) {
+          state.agentJoined = true;
+
+          var joinedAgentName = data.agentName || 'Agent';
+
+          // Remove the "An agent will be with you shortly" placeholder.
+          var container = document.getElementById('ac-messages');
+          if (container) {
+            container.querySelectorAll('.ac-message--system').forEach(function (el) {
+              if (el.textContent === 'Chat started. An agent will be with you shortly.') {
+                el.parentNode.removeChild(el);
+              }
+            });
+          }
+
+          // Show agent identity in header if not disabled.
+          if (settings.showAgentIdentity !== '0') {
+            var agentName = joinedAgentName;
+            var agentPhotoUrl = data.agentPhotoUrl || '';
+
+            var statusEl = document.getElementById('ac-status');
+            if (statusEl) statusEl.style.display = 'none';
+
+            var agentInfo = document.getElementById('ac-agent-info');
+            var agentAvatar = document.getElementById('ac-agent-avatar');
+            var agentNameEl = document.getElementById('ac-agent-name');
+
+            if (agentAvatar) {
+              if (agentPhotoUrl) {
+                agentAvatar.innerHTML = '<img src="' + escAttr(agentPhotoUrl) + '" alt="' + escAttr(agentName) + '" />';
+              } else {
+                var initials = agentName.split(' ').map(function (w) { return w.charAt(0); }).slice(0, 2).join('').toUpperCase();
+                agentAvatar.textContent = initials;
+              }
+            }
+            if (agentNameEl) agentNameEl.textContent = agentName;
+            if (agentInfo) agentInfo.style.display = 'flex';
+          }
+        }
+
+        if (data.status === 'ended') {
           addSystemMessage('Chat ended.');
           var footer = document.getElementById('ac-footer-actions');
           if (footer && state.visitorEmail) footer.style.display = 'flex';

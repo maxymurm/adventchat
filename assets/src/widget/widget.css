@@ -195,6 +195,41 @@
 
 .ac-header__status--offline::before { background: #9ca3af; }
 
+.ac-agent-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.ac-agent-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--ac-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ac-agent-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ac-agent-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ac-secondary);
+  opacity: 0.95;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Pre-chat form                                                       */
 /* ------------------------------------------------------------------ */
