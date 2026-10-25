@@ -51,7 +51,6 @@ $license_data = AdventChat_License::validate();
 				<li class="included"><?php esc_html_e( 'Operator console', 'adventchat' ); ?></li>
 				<li class="included"><?php esc_html_e( 'GDPR / pre-chat forms', 'adventchat' ); ?></li>
 				<li class="included"><?php esc_html_e( 'File sharing & CSAT', 'adventchat' ); ?></li>
-				<li class="included highlight"><?php esc_html_e( 'Message Sneak Peek — see visitor typing live', 'adventchat' ); ?></li>
 				<li class="included highlight"><?php esc_html_e( 'Unlimited websites', 'adventchat' ); ?></li>
 				<li class="included highlight"><?php esc_html_e( 'Bring your own Firebase', 'adventchat' ); ?></li>
 				<li class="excluded"><?php esc_html_e( 'No mobile app access', 'adventchat' ); ?></li>
@@ -77,7 +76,6 @@ $license_data = AdventChat_License::validate();
 			<ul class="adventchat-plan-card__features">
 				<li class="included"><?php esc_html_e( 'Everything in Free', 'adventchat' ); ?></li>
 				<li class="included"><?php esc_html_e( 'Unlimited operators', 'adventchat' ); ?></li>
-				<li class="included highlight"><?php esc_html_e( 'Message Sneak Peek — see visitor typing live', 'adventchat' ); ?></li>
 				<li class="included highlight"><?php esc_html_e( 'Hosted Firebase — no setup needed', 'adventchat' ); ?></li>
 				<li class="included highlight"><?php esc_html_e( 'Mobile operator app (iOS & Android)', 'adventchat' ); ?></li>
 				<li class="included"><?php esc_html_e( 'Push notifications', 'adventchat' ); ?></li>
@@ -170,10 +168,6 @@ $license_data = AdventChat_License::validate();
 		<div class="adventchat-faq-item">
 			<h3><?php esc_html_e( 'Can I downgrade later?', 'adventchat' ); ?></h3>
 			<p><?php esc_html_e( 'Yes. Downgrading removes hosted Firebase access and mobile app. All core chat features continue to work with your own Firebase project.', 'adventchat' ); ?></p>
-		</div>
-		<div class="adventchat-faq-item">
-			<h3><?php esc_html_e( 'What is Message Sneak Peek?', 'adventchat' ); ?></h3>
-			<p><?php esc_html_e( 'Message Sneak Peek lets agents see what a visitor is typing in real time — before they hit Send. This helps agents prepare faster, more accurate replies and reduces response times. It is available on all plans and can be toggled in Settings → Chat Behavior.', 'adventchat' ); ?></p>
 		</div>
 		<div class="adventchat-faq-item">
 			<h3><?php esc_html_e( 'Do I still need my own Firebase on Pro?', 'adventchat' ); ?></h3>

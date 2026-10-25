@@ -240,9 +240,6 @@ Click **"Save Changes"**.
 | **Config textarea appears empty after save** | This is normal — the config is encrypted for security. It's still there. |
 | **Widget doesn't appear on site** | Check Display Rules tab — make sure visibility mode is "Show on all pages" |
 | **Chat messages not appearing** | Verify Firestore security rules are published in Firebase Console |
-| **Session exists in Firebase but Live Chat shows "No active chats"** | Refresh after sign-in. If browser console says index is building, wait until index status is Ready. Newer plugin builds avoid this index dependency automatically. |
-| **Red console errors from `core.min.js`, `metaboxes.min.js`, or other plugins** | These are usually unrelated WordPress/plugin script warnings. Focus on AdventChat lines such as `[Console] Sessions listener error` and Firebase auth/query errors. |
-| **Offline Messages page is empty** | Offline messages are stored in WordPress DB and only when offline form is submitted. Regular live chats are in Firebase `sessions` and do not appear in Offline Messages. |
 | **Offline form not showing** | Enable it in the Offline tab; also check that agents are offline |
 | **GDPR consent not showing** | Enable it in the Privacy tab |
 

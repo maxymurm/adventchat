@@ -83,8 +83,6 @@ When using Pro hosting, the mobile app setup is simplified:
 | **License activation fails** | Check the key for typos; ensure your site can reach adventchat.com |
 | **Still showing Firebase config fields** | Clear your browser cache and reload the settings page |
 | **"License expired"** | Renew at https://adventchat.com/account |
-| **Session exists in Firebase but Live Chat shows no chats** | If Firestore index is still Building, wait until status becomes Ready. Recent AdventChat builds query without composite-index dependency. |
-| **Console shows many red errors unrelated to AdventChat** | Errors from `core.min.js`/other plugins can appear on the same admin page; prioritize AdventChat/Firebase errors first. |
 
 ---
 
