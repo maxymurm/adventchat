@@ -233,6 +233,41 @@
 /* ------------------------------------------------------------------ */
 /*  Pre-chat form                                                       */
 /* ------------------------------------------------------------------ */
+.ac-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 14px 20px 0;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.ac-tabs__btn {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.ac-tabs__btn--active {
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ac-prechat__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
 .ac-prechat {
   padding: 20px;
   display: flex;

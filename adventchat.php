@@ -3,7 +3,7 @@
  * Plugin Name:       AdventChat
  * Plugin URI:        https://adventchat.com
  * Description:       Real-time live chat for WordPress powered by Firebase. Free forever with your own Firebase, or upgrade for hosted infrastructure and a mobile operator app.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires at least: 6.0
  * Requires PHP:      8.1
  * Author:            AdventChat
@@ -17,7 +17,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // Plugin constants.
-define( 'ADVENTCHAT_VERSION', '1.0.1' );
+define( 'ADVENTCHAT_VERSION', '1.0.2' );
 define( 'ADVENTCHAT_PLUGIN_FILE', __FILE__ );
 define( 'ADVENTCHAT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ADVENTCHAT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

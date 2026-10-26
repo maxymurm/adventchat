@@ -41,6 +41,12 @@
     visitorEmail: '',
     unreadCount: 0,
     pendingStart: false,
+    // Agent presence: null = unknown (not loaded or not readable), true/false once known.
+    agentsOnline: null,
+    userMode: null,
+    agentsUnsub: null,
+    agentsTimer: null,
+    agents: [],
     agentJoined: false,
   };
 
@@ -89,6 +95,84 @@
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
       osc.stop(ctx.currentTime + 0.3);
     } catch (e) { /* ignore audio errors */ }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Agent presence + entry mode (Chat / Leave a message)               */
+  /* ------------------------------------------------------------------ */
+  // An agent counts as online only while their heartbeat (lastSeen) is recent. The operator console and the
+  // mobile app refresh it every minute, so a closed browser tab or crashed app stops counting after 3 minutes.
+  var PRESENCE_FRESH_MS = 3 * 60 * 1000;
+
+  function buildTabs() {
+    if (settings.offlineEnabled !== '1') return '';
+    return '<div class="ac-tabs" id="ac-tabs" role="tablist">' +
+      '<button class="ac-tabs__btn ac-tabs__btn--active" id="ac-tab-chat" type="button" role="tab" data-mode="chat">Chat</button>' +
+      '<button class="ac-tabs__btn" id="ac-tab-offline" type="button" role="tab" data-mode="offline">Leave a message</button>' +
+    '</div>';
+  }
+
+  function entryMode() {
+    if (settings.offlineEnabled !== '1') return 'chat';
+    if (state.userMode) return state.userMode;
+    return state.agentsOnline === false ? 'offline' : 'chat';
+  }
+
+  function applyEntryMode() {
+    if (state.sessionId) return;
+    var mode = entryMode();
+    var prechat = document.getElementById('ac-prechat');
+    var offline = document.getElementById('ac-offline');
+    var hint = document.getElementById('ac-chat-hint');
+    if (prechat) prechat.style.display = mode === 'chat' ? '' : 'none';
+    if (offline) offline.style.display = mode === 'offline' ? '' : 'none';
+    if (hint) hint.style.display = (mode === 'chat' && state.agentsOnline === false) ? '' : 'none';
+    var tabChat = document.getElementById('ac-tab-chat');
+    var tabOffline = document.getElementById('ac-tab-offline');
+    if (tabChat) tabChat.classList.toggle('ac-tabs__btn--active', mode === 'chat');
+    if (tabOffline) tabOffline.classList.toggle('ac-tabs__btn--active', mode === 'offline');
+  }
+
+  function hideEntry() {
+    ['ac-tabs', 'ac-prechat', 'ac-offline'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  function updateStatusUi() {
+    var el = document.getElementById('ac-status');
+    if (!el || state.agentJoined) return;
+    var offline = state.agentsOnline === false;
+    el.textContent = state.agentsOnline === null ? 'Checking availability…' : (offline ? 'We are currently offline' : 'Online');
+    el.classList.toggle('ac-header__status--offline', state.agentsOnline !== true);
+  }
+
+  function updatePresence() {
+    var now = Date.now();
+    var online = state.agents.some(function (a) {
+      var seen = a.lastSeen && a.lastSeen.toMillis ? a.lastSeen.toMillis() : 0;
+      return a.status === 'online' && (now - seen) < PRESENCE_FRESH_MS;
+    });
+    state.agentsOnline = online;
+    updateStatusUi();
+    applyEntryMode();
+  }
+
+  function listenForAgents() {
+    if (state.agentsUnsub) return;
+    state.agentsUnsub = db.collection('agents').onSnapshot(function (snapshot) {
+      state.agents = snapshot.docs.map(function (d) { return d.data(); });
+      updatePresence();
+    }, function (err) {
+      // Can't read presence (rules/network): fall back to "unknown" and let the visitor chat as before.
+      console.warn('[AdventChat] presence unavailable:', err.code);
+      state.agentsOnline = null;
+      updateStatusUi();
+      applyEntryMode();
+    });
+    // Staleness is time-based, so re-evaluate even when no snapshot arrives.
+    state.agentsTimer = setInterval(function () { if (state.agentsOnline !== null) updatePresence(); }, 30000);
   }
 
   /* ------------------------------------------------------------------ */
@@ -306,12 +390,13 @@
         '<div class="ac-header">' +
           '<p class="ac-header__title">' + escHtml(settings.welcomeTitle || 'Hi there!') + '</p>' +
           '<p class="ac-header__subtitle">' + escHtml(settings.welcomeSubtitle || 'How can we help you?') + '</p>' +
-          '<p class="ac-header__status" id="ac-status">Online</p>' +
+          '<p class="ac-header__status ac-header__status--offline" id="ac-status">Checking availability…</p>' +
           '<div class="ac-agent-info" id="ac-agent-info" style="display:none;">' +
             '<div class="ac-agent-avatar" id="ac-agent-avatar"></div>' +
             '<span class="ac-agent-name" id="ac-agent-name"></span>' +
           '</div>' +
         '</div>' +
+        buildTabs() +
         buildPrechatForm() +
         '<div class="ac-messages" id="ac-messages" style="display:none;"></div>' +
         '<div class="ac-typing" id="ac-typing"><span></span><span class="ac-typing__dots"><span></span><span></span><span></span></span></div>' +
@@ -339,6 +424,9 @@
 
     document.body.appendChild(root);
     bindEvents(root);
+    // Presence may have loaded before the DOM existed.
+    updateStatusUi();
+    applyEntryMode();
 
     // WP-66: Auto-open with delay.
     if (settings.autoOpenEnabled === '1' && !sessionStorage.getItem('ac_closed')) {
@@ -381,6 +469,7 @@
         '</label>';
     }
 
+    html += '<p class="ac-prechat__hint" id="ac-chat-hint" style="display:none;">No agents are online right now. You can still start a chat and we\'ll reply when someone is back, or leave us a message.</p>';
     html += '<button class="ac-prechat__btn" id="ac-start-chat" type="button">Start Chat</button></div>';
     return html;
   }
@@ -402,7 +491,8 @@
       if (state.open) {
         state.unreadCount = 0;
         updateBadge();
-        if (!startBtn && !state.sessionId) startChat();
+        // With no pre-chat form the chat normally starts on open; skip that while nobody is online so the visitor can choose.
+        if (!startBtn && !state.sessionId && entryMode() === 'chat') startChat();
       } else {
         // WP-66: Mark as manually closed so auto-open doesn't fire again.
         sessionStorage.setItem('ac_closed', '1');
@@ -412,6 +502,19 @@
     if (sendBtn) {
       sendBtn.addEventListener('click', function () { sendMessage(); });
     }
+
+    // Chat / Leave a message tabs.
+    root.querySelectorAll('.ac-tabs__btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.userMode = btn.getAttribute('data-mode');
+        applyEntryMode();
+        // No pre-chat form: choosing "Chat" starts the conversation straight away.
+        if (state.userMode === 'chat' && !startBtn && !state.sessionId) {
+          hideEntry();
+          if (state.user) { startChat(); } else { state.pendingStart = true; addSystemMessage('Connecting...'); }
+        }
+      });
+    });
 
     if (textInput) {
       textInput.addEventListener('keydown', function (e) {
@@ -453,7 +556,7 @@
         state.visitorName = nameInput ? nameInput.value.trim() : 'Visitor';
         state.visitorEmail = emailInput ? emailInput.value.trim() : '';
 
-        root.querySelector('#ac-prechat').style.display = 'none';
+        hideEntry();
 
         // Show messages area immediately so the visitor sees progress.
         var msgEl = document.getElementById('ac-messages');
@@ -826,6 +929,7 @@
       sessionStorage.setItem('adventchat_uid', user.uid);
       state.user = user;
       window.adventchatUser = user;
+      listenForAgents();
 
       // Visitor submitted pre-chat form before auth completed.
       if (state.pendingStart) {
@@ -840,10 +944,9 @@
         state.sessionId = existingSession;
         var messagesEl = document.getElementById('ac-messages');
         var inputEl = document.getElementById('ac-input');
-        var prechatEl = document.getElementById('ac-prechat');
         if (messagesEl) messagesEl.style.display = 'flex';
         if (inputEl) inputEl.style.display = 'flex';
-        if (prechatEl) prechatEl.style.display = 'none';
+        hideEntry();
         listenForMessages();
         listenForAgentTyping();
         listenForSessionStatus();

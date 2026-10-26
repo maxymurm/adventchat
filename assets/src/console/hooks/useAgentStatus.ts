@@ -2,13 +2,25 @@
  * WP-47: useAgentStatus — Agent presence management.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDb, getSiteId, serverTimestamp } from '../utils/firebase';
 import type { Agent } from '../types';
+
+// Heartbeat: refresh lastSeen every minute while online/away. The widget and mobile app treat an agent as online
+// only if lastSeen is under 3 minutes old, so a closed or crashed console stops counting as online on its own.
+const HEARTBEAT_MS = 60_000;
+const PRESENCE_FRESH_MS = 3 * 60_000;
+
+function isFresh(lastSeen: any): boolean {
+  const ms = lastSeen?.toMillis ? lastSeen.toMillis() : 0;
+  return Date.now() - ms < PRESENCE_FRESH_MS;
+}
 
 export function useAgentStatus(agentUid: string | null) {
   const [status, setStatus] = useState<'online' | 'away' | 'offline'>('offline');
   const [agents, setAgents] = useState<Agent[]>([]);
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   // Listen to all agents.
   useEffect(() => {
@@ -78,7 +90,23 @@ export function useAgentStatus(agentUid: string | null) {
     };
   }, [agentUid, updateStatus]);
 
-  const onlineAgents = agents.filter(a => a.status === 'online');
+  // Heartbeat while the console is open (also on tab re-focus, since browsers throttle timers in background tabs).
+  useEffect(() => {
+    if (!agentUid) return;
+    const beat = () => {
+      if (statusRef.current === 'offline') return;
+      getDb().collection('agents').doc(agentUid).update({ lastSeen: serverTimestamp() }).catch(() => {});
+    };
+    const timer = setInterval(beat, HEARTBEAT_MS);
+    const onVisible = () => { if (!document.hidden) beat(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [agentUid]);
+
+  const onlineAgents = agents.filter(a => a.status === 'online' && isFresh(a.lastSeen));
 
   return { status, agents, onlineAgents, updateStatus };
 }
