@@ -182,16 +182,16 @@
     if (settings.offlineEnabled !== '1') return '';
     var html =
       '<div class="ac-offline" id="ac-offline" style="display:none;">' +
-        '<p class="ac-offline__text">We are currently offline. Leave a message and we\'ll get back to you.</p>' +
         '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-name">Name</label><input class="ac-prechat__input" id="ac-off-name" type="text" required /></div>' +
         '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-email">Email</label><input class="ac-prechat__input" id="ac-off-email" type="email" required /></div>' +
-        '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-msg">Message</label><textarea class="ac-prechat__input" id="ac-off-msg" rows="3" required></textarea></div>';
+        '<div class="ac-prechat__field"><label class="ac-prechat__label" for="ac-off-msg">Message</label><textarea class="ac-prechat__input" id="ac-off-msg" rows="2" required></textarea></div>';
 
     if (settings.gdprEnabled === '1') {
       html += '<label class="ac-prechat__consent"><input type="checkbox" id="ac-off-consent" /><span>I agree to the processing of my personal data.</span></label>';
     }
 
     html += '<button class="ac-prechat__btn" id="ac-off-submit" type="button">Send Message</button>' +
+      '<p class="ac-offline__text">We are currently offline. Leave a message and we\'ll get back to you.</p>' +
       '<p class="ac-offline__success" id="ac-off-success" style="display:none;color:#22c55e;text-align:center;font-size:13px;">Message sent! We\'ll be in touch soon.</p>' +
       '</div>';
     return html;
@@ -469,8 +469,8 @@
         '</label>';
     }
 
-    html += '<p class="ac-prechat__hint" id="ac-chat-hint" style="display:none;">No agents are online right now. You can still start a chat and we\'ll reply when someone is back, or leave us a message.</p>';
-    html += '<button class="ac-prechat__btn" id="ac-start-chat" type="button">Start Chat</button></div>';
+    html += '<button class="ac-prechat__btn" id="ac-start-chat" type="button">Start Chat</button>';
+    html += '<p class="ac-prechat__hint" id="ac-chat-hint" style="display:none;">No agents are online right now. You can still start a chat and we\'ll reply when someone is back, or leave us a message.</p></div>';
     return html;
   }
 

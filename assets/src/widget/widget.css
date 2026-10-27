@@ -133,7 +133,7 @@
   position: absolute;
   bottom: 72px;
   width: 380px;
-  max-height: 560px;
+  max-height: min(560px, calc(100vh - 100px));
   background: var(--ac-secondary);
   border-radius: var(--ac-radius);
   box-shadow: var(--ac-shadow);
@@ -269,10 +269,13 @@
 }
 
 .ac-prechat {
-  padding: 20px;
+  padding: 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ac-prechat__field {
@@ -477,13 +480,17 @@
 /*  Offline form (shown when no agents online)                          */
 /* ------------------------------------------------------------------ */
 .ac-offline {
-  padding: 20px;
+  padding: 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ac-offline__text {
+  margin: 0;
   font-size: 13px;
   color: var(--ac-text-light);
   text-align: center;
@@ -529,6 +536,7 @@
 /*  Powered-by footer                                                   */
 /* ------------------------------------------------------------------ */
 .ac-powered {
+  flex-shrink: 0;
   text-align: center;
   padding: 8px;
   font-size: 11px;

@@ -14,12 +14,14 @@ import { useMessages } from './hooks/useMessages';
 import { useAgentStatus } from './hooks/useAgentStatus';
 import { useTyping } from './hooks/useTyping';
 import { useMacros } from './hooks/useMacros';
+import { useTeamSessions } from './hooks/useTeamSessions';
 
 import { VisitorQueue } from './components/VisitorQueue';
 import { ChatWindow } from './components/ChatWindow';
 import { VisitorSidebar } from './components/VisitorSidebar';
 import { StatusToggle } from './components/StatusToggle';
 import { TransferDialog } from './components/TransferDialog';
+import { TeamView } from './components/TeamView';
 
 import type { ChatSession, Department } from './types';
 
@@ -52,7 +54,11 @@ function App() {
   }, []);
 
   const { waitingChats, activeChats, loading: sessionsLoading } = useSessions(!!user);
-  const { status, agents, updateStatus } = useAgentStatus(agentUid || null);
+  const { status, agents, updateStatus } = useAgentStatus(agentUid || null, agentName);
+
+  // "Team" is the agent management / monitoring view; the WordPress menu entry opens it directly.
+  const [view, setView] = useState<'chats' | 'team'>(window.adventchatConfig.view === 'team' ? 'team' : 'chats');
+  const { sessions: teamSessions, loading: teamLoading } = useTeamSessions(!!user && view === 'team');
 
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
@@ -212,6 +218,10 @@ function App() {
       {/* Top bar */}
       <div className="ac-console__topbar">
         <h2 className="ac-console__logo">AdventChat</h2>
+        <nav className="ac-console__tabs" aria-label="Console sections">
+          <button type="button" className={view === 'chats' ? 'is-active' : ''} onClick={() => setView('chats')}>Conversations</button>
+          <button type="button" className={view === 'team' ? 'is-active' : ''} onClick={() => setView('team')}>Team</button>
+        </nav>
         <div className="ac-console__topbar-right">
           <StatusToggle status={status} onStatusChange={updateStatus} />
           <span className="ac-console__agent-name">{agentName}</span>
@@ -234,8 +244,12 @@ function App() {
         </div>
       </div>
 
+      {view === 'team' && (
+        <TeamView agents={agents} sessions={teamSessions} loading={teamLoading} myUid={agentUid} />
+      )}
+
       {/* Main layout */}
-      <div className="ac-console__main">
+      <div className="ac-console__main" style={view === 'team' ? { display: 'none' } : undefined}>
         {/* Left sidebar — queue */}
         <VisitorQueue
           waitingChats={waitingChats}

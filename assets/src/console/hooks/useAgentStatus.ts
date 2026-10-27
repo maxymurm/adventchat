@@ -16,11 +16,13 @@ function isFresh(lastSeen: any): boolean {
   return Date.now() - ms < PRESENCE_FRESH_MS;
 }
 
-export function useAgentStatus(agentUid: string | null) {
+export function useAgentStatus(agentUid: string | null, displayName = '') {
   const [status, setStatus] = useState<'online' | 'away' | 'offline'>('offline');
   const [agents, setAgents] = useState<Agent[]>([]);
   const statusRef = useRef(status);
   statusRef.current = status;
+  const nameRef = useRef(displayName);
+  nameRef.current = displayName;
 
   // Listen to all agents.
   useEffect(() => {
@@ -51,16 +53,19 @@ export function useAgentStatus(agentUid: string | null) {
       const docRef = db.collection('agents').doc(agentUid);
       const doc = await docRef.get();
 
+      // The WordPress display name is the source of truth, so a rename shows up on the next sign-in.
+      const name = nameRef.current;
       if (doc.exists) {
         await docRef.update({
           status: newStatus,
           lastSeen: serverTimestamp(),
+          ...(name ? { displayName: name } : {}),
         });
       } else {
         // Create agent doc if it doesn't exist.
         await docRef.set({
           uid: agentUid,
-          displayName: '',
+          displayName: name,
           email: '',
           status: newStatus,
           lastSeen: serverTimestamp(),

@@ -16,6 +16,7 @@ export interface AdventChatConfig {
   siteId: string;
   restUrl: string;
   restNonce: string;
+  view?: 'chats' | 'team';
 }
 
 export interface ChatSession {

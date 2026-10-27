@@ -129,6 +129,16 @@ final class AdventChat {
 			array( $this, 'render_console_page' )
 		);
 
+		// Same console app, opened on its Team tab (agent availability and performance).
+		add_submenu_page(
+			'adventchat',
+			__( 'Team', 'adventchat' ),
+			__( 'Team', 'adventchat' ),
+			'manage_options',
+			'adventchat-team',
+			array( $this, 'render_console_page' )
+		);
+
 		add_submenu_page(
 			'adventchat',
 			__( 'Settings', 'adventchat' ),
@@ -229,8 +239,8 @@ final class AdventChat {
 			'nonce'   => wp_create_nonce( 'adventchat_admin_nonce' ),
 		) );
 
-		// Load Firebase SDK + console app on the Live Chat (console) page only.
-		if ( 'toplevel_page_adventchat' === $hook_suffix ) {
+		// Load Firebase SDK + console app on the Live Chat and Team pages (same app, different starting tab).
+		if ( in_array( $hook_suffix, array( 'toplevel_page_adventchat', 'adventchat_page_adventchat-team' ), true ) ) {
 			$firebase_config = AdventChat_Options::get( 'firebase_config' );
 			if ( ! empty( $firebase_config ) ) {
 				$firebase_version = '10.14.1';
@@ -259,6 +269,7 @@ final class AdventChat {
 					'siteId'   => md5( get_site_url() ),
 					'restUrl'  => esc_url_raw( rest_url( ADVENTCHAT_API_NAMESPACE ) ),
 					'restNonce'=> wp_create_nonce( 'wp_rest' ),
+					'view'     => 'adventchat_page_adventchat-team' === $hook_suffix ? 'team' : 'chats',
 				) );
 			}
 		}
